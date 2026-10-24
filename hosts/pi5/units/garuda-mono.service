@@ -1,0 +1,9 @@
+[Unit]
+Description=Garuda Mono - single CM3 YOLO26 + DepthAnything (:8098)
+After=network.target
+[Service]
+ExecStart=/usr/bin/python3 -u /home/garuda/garuda-sdk-deploy/hosts/pi5/garuda_mono.py
+Restart=on-failure
+User=garuda
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Garuda SDK — Autonomy Stack for the Microchip Drone &amp; Robotics Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F7F6F2; --panel:#EFEEE8; --ink:#14181D; --ink2:#3A414B; --slate:#6B7480;
+  --rule:#D8D5CC; --signal:#C8102E; --phos:#0E7A4E; --sky:#1D5FA0; --amber:#B7791F; --pine:#0E4436;
+  --hf:'Barlow Condensed','DejaVu Sans Condensed',sans-serif;
+  --bf:'IBM Plex Sans','DejaVu Sans',sans-serif;
+  --mf:'IBM Plex Mono','DejaVu Sans Mono',monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--bf);font-size:14px;line-height:1.55}
+.wrap{max-width:1080px;margin:0 auto;padding:0 34px}
+section{padding:40px 0 30px;border-bottom:1px solid var(--rule)}
+.clause{font-family:var(--mf);font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--signal)}
+h1{font-family:var(--hf);font-weight:700;font-size:54px;line-height:1.02;margin:10px 0 14px;text-transform:none}
+h2{font-family:var(--hf);font-weight:700;font-size:34px;line-height:1.05;margin:8px 0 12px}
+h3{font-family:var(--hf);font-weight:600;font-size:22px;margin:26px 0 8px}
+h4{font-family:var(--bf);font-weight:600;font-size:14.5px;margin:18px 0 6px}
+p{margin:0 0 10px;max-width:78ch}
+.standfirst{font-size:16px;color:var(--ink2);max-width:70ch}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px;margin:14px 0 6px}
+.tbl th{font-family:var(--mf);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--slate);text-align:left;padding:7px 10px;border-bottom:1.6px solid var(--ink)}
+.tbl td{padding:7px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+.tbl .rowlab{font-weight:600;white-space:nowrap}
+.win{color:var(--phos);font-weight:600}.lose{color:var(--amber);font-weight:600}.hot{color:var(--signal);font-weight:600}
+.callout{background:var(--panel);border-left:4px solid var(--signal);padding:16px 20px;margin:18px 0}
+.callout .tag{font-family:var(--mf);font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--signal);display:block;margin-bottom:6px}
+.callout.green{border-left-color:var(--phos)} .callout.green .tag{color:var(--phos)}
+.cols{display:grid;gap:16px;margin:16px 0}
+.c2{grid-template-columns:1fr 1fr}.c3{grid-template-columns:1fr 1fr 1fr}
+.card{background:var(--panel);border:1px solid var(--rule);padding:14px 16px}
+.card h4{margin:0 0 6px;font-family:var(--hf);font-weight:600;font-size:18px}
+.card p{font-size:12.8px;margin-bottom:6px}
+.card .svc{font-family:var(--mf);font-size:10.5px;color:var(--sky);font-weight:600}
+.dg{margin:18px 0}
+.dg svg{width:100%;height:auto;display:block}
+.fig{font-family:var(--mf);font-size:10.5px;color:var(--slate);letter-spacing:.06em;text-transform:uppercase;margin:6px 0 0}
+.kicker-band{background:var(--ink);color:#F4F5F2;padding:16px 20px;margin:20px 0}
+.kicker-band .tag{font-family:var(--mf);font-size:10px;font-weight:600;letter-spacing:.14em;color:#FFD166;text-transform:uppercase;display:block;margin-bottom:6px}
+.kicker-band p{color:#D8DCE1;font-size:12.8px;margin:0;max-width:none}
+.cover{padding:70px 0 46px;border-bottom:4px solid var(--ink)}
+.meta{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:26px;font-size:12px}
+.meta b{display:block;font-family:var(--mf);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--slate);margin-bottom:3px}
+.toc{columns:2;column-gap:40px;margin-top:14px;font-size:13px}
+.toc a{display:block;color:var(--ink);text-decoration:none;padding:5px 0;border-bottom:1px solid var(--rule)}
+.toc span{font-family:var(--mf);color:var(--signal);font-size:11px;margin-right:10px}
+.footnote{font-size:11.5px;color:var(--slate)}
+ul{margin:6px 0 12px;padding-left:20px}li{margin-bottom:5px;max-width:75ch}
+@media print{
+  body{font-size:11.2px}
+  section{page-break-before:always;border-bottom:none;padding:8mm 0 0}
+  section.flow{page-break-before:auto}
+  .cover{page-break-before:avoid}
+  h1{font-size:40px}h2{font-size:26px}
+  .dg svg{max-height:118mm}
+  a{color:var(--ink);text-decoration:none}
+  .card{break-inside:avoid;page-break-inside:avoid}
+  figure,.fig{break-inside:avoid;page-break-inside:avoid}
+  h2,h3{break-after:avoid;page-break-after:avoid}
+  .footnote{break-before:avoid}
+  @page{size:A4;margin:13mm 13mm 15mm}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ COVER ============ -->
+<div class="cover"><div class="wrap">
+  <span class="clause">Microchip · Embedded Solutions Engineering · Working Specification v0.2 · July 2026</span>
+  <h1>Garuda SDK</h1>
+  <p class="standfirst" style="font-size:19px">The open autonomy stack for the Microchip drone &amp; robotics platform — perception, navigation and mission services on the Hailo mission computer, paired with PX4 flight control on Microchip silicon over a time-synchronised Ethernet spine.</p>
+  <div class="meta">
+    <div><b>Scope</b>Companion-computer SDK, three host tiers</div>
+    <div><b>Licence policy</b>Permissive core — customers ship closed products</div>
+    <div><b>Parity target</b>ModalAI VOXL SDK</div>
+    <div><b>Status</b>Internal draft — figures are planning estimates</div>
+  </div>
+  <h3 style="margin-top:30px">Contents</h3>
+  <nav class="toc">
+    <a href="#s01"><span>01</span>Executive summary</a>
+    <a href="#s02"><span>02</span>What Garuda is</a>
+    <a href="#s03"><span>03</span>System architecture</a>
+    <a href="#s04"><span>04</span>Service catalogue</a>
+    <a href="#s05"><span>05</span>State machines</a>
+    <a href="#s06"><span>06</span>The timing chain</a>
+    <a href="#s07"><span>07</span>Drone use cases</a>
+    <a href="#s08"><span>08</span>Competitive comparison</a>
+    <a href="#s09"><span>09</span>Licensing model</a>
+    <a href="#s10"><span>10</span>Roadmap &amp; gates</a>
+    <a href="#s11"><span>11</span>Development plan &amp; AI use</a>
+    <a href="#s12"><span>12</span>Bill of materials</a>
+    <a href="#s13"><span>13</span>Test plan</a>
+    <a href="#s14"><span>14</span>Risks &amp; open items</a>
+  </nav>
+</div></div>
+
+<!-- ============ 01 EXEC SUMMARY ============ -->
+<section id="s01" class="flow"><div class="wrap">
+  <span class="clause">01 · Executive summary</span>
+  <h2>One SDK, three hosts, and the only open autonomy stack in its power class</h2>
+  <p class="standfirst">Garuda SDK is the software that turns Microchip's mission computer into an autonomy engine — and turns the Hailo acquisition into a platform rather than a part.</p>
+  <ul>
+    <li><b>What it is.</b> Twelve Linux services — synchronised camera capture, stereo visual-inertial odometry, mapping, planning, NPU inference, the PX4 bridge, time sync, health, logging, portal and OTA — running on the mission computer and speaking to a PX4 flight controller on PIC32CZ CA90 over Ethernet with PTP.</li>
+    <li><b>Why it wins.</b> Every incumbent keeps its VIO closed: ModalAI ships Qualcomm binaries it cannot read; NVIDIA's cuVSLAM is a sealed GEM. Garuda's reference stack is permissively licensed end to end — customers extend it, audit it, and ship closed products on it. The accelerated kernels (v2, Hailo DSP) remain the retained moat.</li>
+    <li><b>How it de-risks.</b> Development starts on Raspberry Pi 5 + Hailo-10H (A76 cores remove the CPU question; $130 accelerator; everything host-agnostic), then ports to the Hailo-15H SoM as a BSP exercise with measured per-stage budgets. The programme's biggest unknown becomes a number before the hard money is spent.</li>
+    <li><b>What it costs.</b> Under $2,500 of external hardware, two core engineers plus part-time bench with AI-assisted development carrying ~75% of the software authoring, first GPS-denied flight targeted at week 16, usable v1 at month 9.</li>
+    <li><b>What is genuinely new.</b> Three pieces: SLAM front-end kernels on the Hailo vector DSP (white space; toolchain access arrives with the acquisition), the PTP-disciplined trigger/strobe camera pipeline as a product, and AI-ISP tuning for night VIO. Everything else is disciplined integration of mature permissive open source — which is the point, not a weakness.</li>
+  </ul>
+  <div class="kicker-band"><span class="tag">The one-sentence position</span>
+  <p>ModalAI sells a closed stack on one chip; NVIDIA sells a closed stack on a 15–60&nbsp;W module; Garuda is the open stack on silicon we own end to end — flight control, propulsion, power, perception, networking and time — and the only one that keeps navigating when the satellites go away.</p></div>
+</div></section>
+
+<!-- ============ 02 WHAT IT IS ============ -->
+<section id="s02"><div class="wrap">
+  <span class="clause">02 · What Garuda is</span>
+  <h2>The companion half of a two-brain aircraft</h2>
+  <p>The platform architecture is deliberately split: hard real-time flight control lives on the PIC32CZ&nbsp;CA90 — its own silicon, RTOS, IMUs and power rail — while everything computationally heavy lives on the mission computer under Linux. Garuda is the mission-computer half. Nothing in the inner control loop ever crosses Ethernet; odometry, obstacle data and mission goals do. If any Garuda service dies, the aircraft is still flown by the flight controller — that separation is a sales argument, an engineering principle and a certification story at once.</p>
+  <table class="tbl">
+    <thead><tr><th>Tier</th><th>Host</th><th>Accelerator</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td class="rowlab">Dev / eval — now</td><td>Raspberry Pi 5 · CM5</td><td>Hailo-10H (AI HAT+ 2 bench · bare M.2 flight)</td><td>Prove the pipeline, ship the eval kit, on-device VLM demos nobody else can show</td></tr>
+      <tr><td class="rowlab">Product</td><td>Hailo-15H SoM (47×30 mm) on Microchip carrier</td><td>integrated NPU + vector DSP + AI-ISP</td><td>Industrial tier: −40/+85 °C, sub-0.01 lux night VIO, the two-socket carrier</td></tr>
+      <tr><td class="rowlab">High end — later</td><td>PIC64HX</td><td>Hailo accelerator</td><td>All-Microchip compute, certification-adjacent missions</td></tr>
+    </tbody>
+  </table>
+  <div class="callout green"><span class="tag">Design rules the whole SDK obeys</span>
+    <p><b>1.</b> Failsafe gates on odometry validity and covariance — never on link liveness. Loss of the mission computer is a degraded mode, not a fallout. <b>2.</b> One PTP clock domain: camera triggers are generated from the disciplined clock and the strobe returns to a capture input, so the EKF's external-vision delay is measured, not guessed. <b>3.</b> The VIO IMU comes from the flight controller over DDS — timestamped at source in the shared timebase. <b>4.</b> Every sensor and host sits behind a plugin interface, so tiers and cameras are swappable without touching the estimator.</p>
+  </div>
+</div></section>
+
+<!-- ============ 03 ARCHITECTURE ============ -->
+<section id="s03"><div class="wrap">
+  <span class="clause">03 · System architecture</span>
+  <h2>Twelve services on one timed fabric</h2>
+  <div class="dg">
+  <svg viewBox="0 0 1180 655" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Garuda SDK architecture">
+    <defs><style>
+      .bx{fill:#EFEEE8;stroke:#C9C6BC;stroke-width:1.2}
+      .bxd{fill:#14181D;stroke:#14181D}
+      .bxg{fill:#0E4436;stroke:#0E4436}
+      .nm{font-family:'Barlow Condensed','DejaVu Sans Condensed',sans-serif;font-size:18px;font-weight:600;fill:#14181D}
+      .nmw{font-family:'Barlow Condensed','DejaVu Sans Condensed',sans-serif;font-size:18px;font-weight:700;fill:#fff}
+      .pt{font-family:'IBM Plex Mono','DejaVu Sans Mono',monospace;font-size:10px;fill:#6B7480}
+      .ptw{font-family:'IBM Plex Mono','DejaVu Sans Mono',monospace;font-size:10px;fill:#B9C4BE}
+      .lk{font-family:'IBM Plex Mono','DejaVu Sans Mono',monospace;font-size:9.5px;fill:#C8102E;font-weight:600}
+      .w{stroke:#6B7480;stroke-width:1.6;fill:none}
+      .wr{stroke:#C8102E;stroke-width:1.8;fill:none}
+      .wg{stroke:#0E4436;stroke-width:2.2;fill:none;stroke-dasharray:6 4}
+      .st{font-family:'IBM Plex Mono','DejaVu Sans Mono',monospace;font-size:9px;fill:#0E7A4E;font-weight:600}
+    </style>
+    <marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#6B7480"/></marker>
+    <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#C8102E"/></marker>
+    </defs>
+
+    <!-- sensors column -->
+    <rect class="bx" x="20" y="40" width="170" height="76" rx="3"/>
+    <text class="nm" x="36" y="66">Stereo GS pair</text>
+    <text class="pt" x="36" y="84">HW trigger · strobe</text>
+    <text class="pt" x="36" y="100">CSI</text>
+    <rect class="bx" x="20" y="132" width="170" height="58" rx="3"/>
+    <text class="nm" x="36" y="156">ToF / depth</text>
+    <text class="pt" x="36" y="174">plugin (T2, learned)</text>
+    <rect class="bx" x="20" y="206" width="170" height="58" rx="3"/>
+    <text class="nm" x="36" y="230">FC IMU</text>
+    <text class="pt" x="36" y="248">via DDS, PTP-stamped</text>
+
+    <!-- perception pipeline -->
+    <rect class="bx" x="250" y="40" width="185" height="76" rx="3"/>
+    <text class="nm" x="266" y="66">garuda-camera</text>
+    <text class="pt" x="266" y="84">libcamera/V4L2 backend</text>
+    <text class="pt" x="266" y="100">PTP frame timestamps</text>
+    <rect class="bx" x="495" y="40" width="185" height="76" rx="3"/>
+    <text class="nm" x="511" y="66">garuda-vio</text>
+    <text class="pt" x="511" y="84">Basalt · BSD-3</text>
+    <text class="pt" x="511" y="100">odom 50–100 Hz + cov</text>
+    <rect class="bx" x="740" y="40" width="185" height="76" rx="3"/>
+    <text class="nm" x="756" y="66">garuda-mapper</text>
+    <text class="pt" x="756" y="84">Voxblox TSDF/ESDF</text>
+    <rect class="bx" x="985" y="40" width="175" height="76" rx="3"/>
+    <text class="nm" x="1001" y="66">garuda-planner</text>
+    <text class="pt" x="1001" y="84">OMPL · setpoints</text>
+
+    <path class="w" d="M190 78 H243" marker-end="url(#ar)"/>
+    <path class="w" d="M435 78 H488" marker-end="url(#ar)"/>
+    <path class="w" d="M680 78 H733" marker-end="url(#ar)"/>
+    <path class="w" d="M925 78 H978" marker-end="url(#ar)"/>
+    <path class="w" d="M190 161 H340 V123" marker-end="url(#ar)"/>
+    <path class="w" d="M190 235 H587 V123" marker-end="url(#ar)"/>
+
+    <!-- inference -->
+    <rect class="bxd" x="250" y="150" width="430" height="86" rx="3"/>
+    <text class="nmw" x="268" y="178">garuda-inference · HailoRT</text>
+    <text class="ptw" x="268" y="198">detect · segment · learned depth · tracker</text>
+    <text class="ptw" x="268" y="215">VLM / LLM endpoint (Hailo-10H tier)</text>
+    <path class="w" d="M340 116 V143" marker-end="url(#ar)"/>
+    <path class="w" d="M680 193 H830 V123" marker-end="url(#ar)"/>
+    <text class="pt" x="700" y="186">semantics → map</text>
+
+    <!-- support row -->
+    <rect class="bx" x="740" y="150" width="185" height="86" rx="3"/>
+    <text class="nm" x="756" y="176">garuda-calib</text>
+    <text class="pt" x="756" y="194">Kalibr · cam-IMU</text>
+    <text class="pt" x="756" y="210">guided workflow</text>
+    <rect class="bx" x="985" y="150" width="175" height="86" rx="3"/>
+    <text class="nm" x="1001" y="176">garuda-health</text>
+    <text class="pt" x="1001" y="194">watchdogs · degraded-</text>
+    <text class="pt" x="1001" y="210">mode signalling</text>
+
+    <!-- bridge band -->
+    <rect class="bxd" x="20" y="292" width="1140" height="72" rx="3"/>
+    <text class="nmw" x="40" y="320">garuda-bridge</text>
+    <text class="ptw" x="40" y="340">uXRCE-DDS agent → EKF2 external vision · trajectory setpoints · MAVLink router alongside for GCS</text>
+    <text class="ptw" x="800" y="320">garuda-time</text>
+    <text class="pt" x="800" y="340" fill="#B9C4BE">ptp4l · phc2sys · trigger gen</text>
+    <path class="wr" d="M587 236 V285" marker-end="url(#arr)"/>
+    <path class="wr" d="M1072 236 V285" marker-end="url(#arr)"/>
+    <text class="lk" x="600" y="262">odom + validity</text>
+
+    <!-- ethernet spine -->
+    <rect class="bxg" x="20" y="392" width="1140" height="56" rx="3"/>
+    <text class="nmw" x="40" y="415">Ethernet spine · Microchip TSN switch = PTP grandmaster</text>
+    <text class="ptw" x="40" y="434">one hardware-timestamped clock domain · uXRCE-DDS + MAVLink · IP payloads share the fabric</text>
+    <path class="w" d="M590 364 V385" marker-end="url(#ar)"/>
+
+    <!-- FC -->
+    <rect class="bx" x="330" y="480" width="520" height="86" rx="3"/>
+    <text class="nm" x="350" y="508">PX4 flight controller · PIC32CZ CA90</text>
+    <text class="pt" x="350" y="528">own redundant IMUs · own RTOS · own power rail · GMAC with IEEE 1588</text>
+    <text class="pt" x="350" y="546">EKF2 fuses external vision · failsafe on covariance, never on link</text>
+    <path class="wg" d="M590 448 V473"/>
+    <text class="st" x="608" y="466">PTP</text>
+
+    <!-- ops row -->
+    <rect class="bx" x="20" y="480" width="270" height="86" rx="3"/>
+    <text class="nm" x="36" y="508">garuda-portal · logger · ota</text>
+    <text class="pt" x="36" y="528">browser UI · flight-synced logs</text>
+    <text class="pt" x="36" y="546">A/B image update, rollback</text>
+    <rect class="bx" x="890" y="480" width="270" height="86" rx="3"/>
+    <text class="nm" x="906" y="508">GCS / fleet</text>
+    <text class="pt" x="906" y="528">MAVLink · QGC-compatible</text>
+    <text class="pt" x="906" y="546">apt repo · eval-kit image</text>
+
+    <text class="pt" x="20" y="606">Design rule: attitude and rate control never leave the flight controller. The perception loop (odometry, obstacles, goals) is the only traffic that crosses the spine —</text>
+    <text class="pt" x="20" y="624">and every message in it carries a timestamp from the same disciplined clock, so latency is a measured constant rather than a tuned guess.</text>
+  </svg>
+  <p class="fig">Fig. 1 — Garuda SDK service architecture and data plane</p>
+  </div>
+</div></section>
+
+<!-- ============ 04 SERVICES ============ -->
+<section id="s04"><div class="wrap">
+  <span class="clause">04 · Service catalogue</span>
+  <h2>Twelve services, one contract</h2>
+  <table class="tbl">
+    <thead><tr><th>Service</th><th>What it does (v1.0 features)</th><th>Built from</th><th>Licence</th></tr></thead>
+    <tbody>
+      <tr><td class="rowlab">garuda-camera</td><td>Synchronised capture; hardware trigger out, strobe timestamp in; per-frame PTP timestamps; GS sensors (OV9281 pair via Camarray, IMX296 via XTR); mono and Bayer paths</td><td>libcamera / V4L2 + ours</td><td>LGPL-dyn + BSD</td></tr>
+      <tr><td class="rowlab">garuda-vio</td><td>Stereo-inertial odometry, 20–30 Hz front end, ≥200 Hz pose via IMU propagation, covariance and validity flags, online time-offset estimation</td><td><b>Basalt</b></td><td>BSD-3</td></tr>
+      <tr><td class="rowlab">garuda-calib</td><td>Intrinsics, extrinsics, cam-IMU calibration; guided capture; Allan-variance IMU characterisation</td><td>Kalibr + ours</td><td>BSD</td></tr>
+      <tr><td class="rowlab">garuda-inference</td><td>HEF model runner (detect / segment / depth / track); model manager; zero-copy frames; VLM endpoint on 10H tier</td><td>HailoRT</td><td>ours BSD</td></tr>
+      <tr><td class="rowlab">garuda-mapper</td><td>Local TSDF/ESDF obstacle map from stereo or ToF depth; costmap export</td><td>Voxblox</td><td>BSD</td></tr>
+      <tr><td class="rowlab">garuda-planner</td><td>Local trajectory generation, goal-to-setpoint, stop-and-replan</td><td>OMPL, mav_trajectory_generation</td><td>BSD / Apache</td></tr>
+      <tr><td class="rowlab">garuda-bridge</td><td>uXRCE-DDS agent; odometry into EKF2 external vision; setpoints back; MAVLink router for GCS</td><td>eProsima + PX4</td><td>Apache / BSD</td></tr>
+      <tr><td class="rowlab">garuda-time</td><td>ptp4l/phc2sys management; PHC-disciplined camera trigger generation; sync-quality monitoring</td><td>linuxptp + ours</td><td>GPL daemon + BSD</td></tr>
+      <tr><td class="rowlab">garuda-health</td><td>Service supervision, watchdogs, degraded-mode signalling to the FC</td><td>ours</td><td>BSD</td></tr>
+      <tr><td class="rowlab">garuda-logger</td><td>Flight-synchronised logging; ULog cross-reference; export tooling</td><td>ours</td><td>BSD</td></tr>
+      <tr><td class="rowlab">garuda-portal</td><td>Browser UI: status, calibration, configuration, live views, map view</td><td>ours</td><td>BSD</td></tr>
+      <tr><td class="rowlab">garuda-ota</td><td>A/B image update with trial boot and rollback; apt repository for services</td><td>ours</td><td>BSD</td></tr>
+    </tbody>
+  </table>
+  <p class="footnote">v1.5 adds: ToF and learned-depth plugins, precision-landing service, night-VIO ISP profile, multi-vehicle time transfer, Rover/AMR robotics profile. v2 (conditional, post-close): DSP-offloaded front-end kernels, NPU-formulated CV, the perception-socket contract as a Dronecode standard proposal. Excluded by policy: GPLv3 estimators (OpenVINS, VINS-Fusion, ORB-SLAM3) and the archived PX4-Avoidance.</p>
+</div></section>
+
+<!-- ============ 05 STATE MACHINES ============ -->
+<section id="s05"><div class="wrap">
+  <span class="clause">05 · State machines</span>
+  <h2>The four machines that define behaviour</h2>
+  <p class="standfirst">Autonomy stacks fail at the seams — startup, degradation and update. Garuda specifies those seams as explicit state machines, and the test plan exercises every transition.</p>
+
+  <h3>5.1 &nbsp; System lifecycle</h3>
+  <div class="dg">
+  <svg viewBox="0 0 1180 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="System lifecycle state machine">
+    <defs><style>
+      .stx{fill:#EFEEE8;stroke:#14181D;stroke-width:1.5}
+      .stg{fill:#0E4436;stroke:#0E4436}
+      .sta{fill:#B7791F;stroke:#B7791F}
+      .str{fill:#C8102E;stroke:#C8102E}
+      .sn{font-family:'Barlow Condensed','DejaVu Sans Condensed',sans-serif;font-size:17px;font-weight:700;fill:#14181D}
+      .snw{font-family:'Barlow Condensed','DejaVu Sans Condensed',sans-serif;font-size:17px;font-weight:700;fill:#fff}
+      .ss{font-family:'IBM Plex Mono','DejaVu Sans Mono',monospace;font-size:9px;fill:#6B7480}
+      .ssw{font-family:'IBM Plex Mono','DejaVu Sans Mono',monospace;font-size:9px;fill:#D8DCE1}
+      .el{font-family:'IBM Plex Mono','DejaVu Sans Mono',monospace;font-size:9.5px;fill:#3A414B}
+      .w2{stroke:#3A414B;stroke-width:1.5;fill:none}
+    </style>
+    <marker id="a2" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#3A414B"/></marker>
+    </defs>
+    <rect class="stx" x="20" y="60" width="130" height="56" rx="8"/><text class="sn" x="45" y="84">BOOT</text><text class="ss" x="45" y="102">services launch</text>
+    <rect class="stx" x="205" y="60" width="150" height="56" rx="8"/><text class="sn" x="228" y="84">TIME-SYNC</text><text class="ss" x="228" y="102">PTP lock &lt; 50 µs</text>
+    <rect class="stx" x="410" y="60" width="160" height="56" rx="8"/><text class="sn" x="433" y="84">CALIB-CHECK</text><text class="ss" x="433" y="102">extrinsics valid?</text>
+    <rect class="stg" x="625" y="60" width="130" height="56" rx="8"/><text class="snw" x="655" y="84">READY</text><text class="ssw" x="655" y="102">publishing idle</text>
+    <rect class="stg" x="810" y="60" width="130" height="56" rx="8"/><text class="snw" x="838" y="84">ACTIVE</text><text class="ssw" x="838" y="102">odom → EKF2</text>
+    <rect class="sta" x="995" y="60" width="165" height="56" rx="8"/><text class="snw" x="1016" y="84">DEGRADED</text><text class="ssw" x="1016" y="102">partial services</text>
+    <rect class="str" x="810" y="205" width="170" height="56" rx="8"/><text class="snw" x="832" y="229">FAILSAFE-ASSIST</text><text class="ssw" x="832" y="247">FC-only flight aided</text>
+    <rect class="stx" x="410" y="205" width="180" height="56" rx="8"/><text class="sn" x="433" y="229">MAINTENANCE</text><text class="ss" x="433" y="247">portal · calib · OTA</text>
+
+    <path class="w2" d="M150 88 H198" marker-end="url(#a2)"/>
+    <path class="w2" d="M355 88 H403" marker-end="url(#a2)"/>
+    <path class="w2" d="M570 88 H618" marker-end="url(#a2)"/>
+    <path class="w2" d="M755 88 H803" marker-end="url(#a2)"/><text class="el" x="762" y="80">arm</text>
+    <path class="w2" d="M940 88 H988" marker-end="url(#a2)"/><text class="el" x="944" y="80">svc fault</text>
+    <path class="w2" d="M1040 116 C 1040 170, 960 170, 942 116" marker-end="url(#a2)"/><text class="el" x="985" y="168">recovered</text>
+    <path class="w2" d="M1077 116 V233 H987" marker-end="url(#a2)"/><text class="el" x="1000" y="290">VIO invalid</text>
+    <path class="w2" d="M875 205 V152 C 875 130, 875 130, 875 121" marker-end="url(#a2)"/><text class="el" x="884" y="168">re-valid + cov OK</text>
+    <path class="w2" d="M690 116 V233 H597" marker-end="url(#a2)"/><text class="el" x="614" y="290">operator</text>
+    <path class="w2" d="M490 205 V123" marker-end="url(#a2)"/><text class="el" x="498" y="168">resume</text>
+    <path class="w2" d="M485 116 C 460 175, 330 175, 300 121" marker-end="url(#a2)"/><text class="el" x="330" y="178">calib stale → recalibrate</text>
+    <text class="el" x="20" y="310">Rule: transitions into FAILSAFE-ASSIST are driven by odometry validity and covariance thresholds — the Ethernet link being up is never sufficient, and being down is never the trigger.</text>
+  </svg>
+  <p class="fig">Fig. 2 — System lifecycle: PTP lock and calibration validity gate entry into service; degradation is a first-class state</p>
+  </div>
+
+  <h3>5.2 &nbsp; VIO health</h3>
+  <div class="dg">
+  <svg viewBox="0 0 1180 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="VIO health state machine">
+    <rect class="stx" x="20" y="50" width="150" height="56" rx="8"/><text class="sn" x="46" y="74">INIT</text><text class="ss" x="46" y="92">stationary est.</text>
+    <rect class="stg" x="250" y="50" width="170" height="56" rx="8"/><text class="snw" x="276" y="74">TRACKING</text><text class="ssw" x="276" y="92">cov &lt; τ₁ · publishes</text>
+    <rect class="sta" x="510" y="50" width="180" height="56" rx="8"/><text class="snw" x="534" y="74">UNCERTAIN</text><text class="ssw" x="534" y="92">τ₁ ≤ cov &lt; τ₂ · flagged</text>
+    <rect class="str" x="785" y="50" width="140" height="56" rx="8"/><text class="snw" x="812" y="74">LOST</text><text class="ssw" x="812" y="92">invalid → FC</text>
+    <rect class="stx" x="985" y="50" width="175" height="56" rx="8"/><text class="sn" x="1008" y="74">REINIT</text><text class="ss" x="1008" y="92">hover-assisted</text>
+    <path class="w2" d="M170 78 H243" marker-end="url(#a2)"/><text class="el" x="180" y="70">converged</text>
+    <path class="w2" d="M420 78 H503" marker-end="url(#a2)"/><text class="el" x="430" y="70">cov rising</text>
+    <path class="w2" d="M545 106 C 500 150, 400 150, 360 110" marker-end="url(#a2)"/><text class="el" x="418" y="152">cov recovers</text>
+    <path class="w2" d="M690 78 H778" marker-end="url(#a2)"/><text class="el" x="700" y="70">cov ≥ τ₂ / features &lt; N</text>
+    <path class="w2" d="M925 78 H978" marker-end="url(#a2)"/>
+    <path class="w2" d="M1070 106 C 1050 190, 420 200, 335 112" marker-end="url(#a2)"/><text class="el" x="640" y="196">re-converged (FC holds attitude meanwhile)</text>
+    <text class="el" x="20" y="240">Thresholds τ₁, τ₂ and minimum feature count N are configuration, tuned per airframe during the benchmark programme; every transition is logged and replayable.</text>
+  </svg>
+  <p class="fig">Fig. 3 — VIO health: covariance-driven, with an explicit assisted re-initialisation path</p>
+  </div>
+
+  <h3>5.3 &nbsp; Mission execution</h3>
+  <div class="dg">
+  <svg viewBox="0 0 1180 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mission state machine">
+    <rect class="stx" x="20" y="40" width="120" height="52" rx="8"/><text class="sn" x="48" y="62">IDLE</text><text class="ss" x="48" y="80">disarmed</text>
+    <rect class="stx" x="185" y="40" width="130" height="52" rx="8"/><text class="sn" x="212" y="62">ARMED</text><text class="ss" x="212" y="80">preflight OK</text>
+    <rect class="stg" x="360" y="40" width="140" height="52" rx="8"/><text class="snw" x="386" y="62">TAKEOFF</text><text class="ssw" x="386" y="80">VIO tracking req.</text>
+    <rect class="stg" x="545" y="40" width="150" height="52" rx="8"/><text class="snw" x="572" y="62">MISSION</text><text class="ssw" x="572" y="80">planner setpoints</text>
+    <rect class="sta" x="740" y="40" width="140" height="52" rx="8"/><text class="snw" x="764" y="62">HOLD</text><text class="ssw" x="764" y="80">degraded / pause</text>
+    <rect class="stg" x="925" y="40" width="115" height="52" rx="8"/><text class="snw" x="950" y="62">RTL</text><text class="ssw" x="950" y="80">VIO path home</text>
+    <rect class="stx" x="925" y="150" width="115" height="52" rx="8"/><text class="sn" x="950" y="172">LAND</text><text class="ss" x="950" y="190">ToF-assisted</text>
+    <path class="w2" d="M140 66 H178" marker-end="url(#a2)"/>
+    <path class="w2" d="M315 66 H353" marker-end="url(#a2)"/>
+    <path class="w2" d="M500 66 H538" marker-end="url(#a2)"/>
+    <path class="w2" d="M695 66 H733" marker-end="url(#a2)"/><text class="el" x="698" y="58">VIO uncertain</text>
+    <path class="w2" d="M780 92 C 740 140, 680 140, 650 96" marker-end="url(#a2)"/><text class="el" x="688" y="142">recovered</text>
+    <path class="w2" d="M880 66 H918" marker-end="url(#a2)"/><text class="el" x="882" y="58">timeout</text>
+    <path class="w2" d="M982 92 V143" marker-end="url(#a2)"/>
+    <path class="w2" d="M925 176 H80 V98" marker-end="url(#a2)"/><text class="el" x="440" y="170">touchdown → disarm</text>
+    <text class="el" x="20" y="232">VIO-LOST during any airborne state hands control to the flight controller's own failsafe (FC-only descent or GPS RTL where available); the mission machine never overrides the FC.</text>
+  </svg>
+  <p class="fig">Fig. 4 — Mission execution: degradation pauses rather than aborts; the FC always owns the last word</p>
+  </div>
+
+  <h3>5.4 &nbsp; OTA update</h3>
+  <div class="dg">
+  <svg viewBox="0 0 1180 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OTA A/B state machine">
+    <rect class="stg" x="20" y="40" width="180" height="56" rx="8"/><text class="snw" x="44" y="64">SLOT-A ACTIVE</text><text class="ssw" x="44" y="82">running · known-good</text>
+    <rect class="stx" x="280" y="40" width="170" height="56" rx="8"/><text class="sn" x="304" y="64">STAGE-B</text><text class="ss" x="304" y="82">image written · verified</text>
+    <rect class="sta" x="530" y="40" width="190" height="56" rx="8"/><text class="snw" x="554" y="64">TRIAL-BOOT B</text><text class="ssw" x="554" y="82">watchdog-armed, on ground only</text>
+    <rect class="stg" x="800" y="40" width="160" height="56" rx="8"/><text class="snw" x="824" y="64">COMMIT B</text><text class="ssw" x="824" y="82">B = known-good</text>
+    <rect class="str" x="800" y="120" width="160" height="50" rx="8"/><text class="snw" x="824" y="142">ROLLBACK</text><text class="ssw" x="824" y="159">auto → slot A</text>
+    <path class="w2" d="M200 68 H273" marker-end="url(#a2)"/><text class="el" x="208" y="60">download + hash</text>
+    <path class="w2" d="M450 68 H523" marker-end="url(#a2)"/><text class="el" x="460" y="60">reboot</text>
+    <path class="w2" d="M720 68 H793" marker-end="url(#a2)"/><text class="el" x="726" y="60">health OK</text>
+    <path class="w2" d="M660 96 C 700 140, 760 145, 793 145" marker-end="url(#a2)"/><text class="el" x="672" y="140">watchdog / health fail</text>
+    <text class="el" x="20" y="180">Updates are refused while armed. The FC's own firmware update path (CA90 8 MB A/B) follows the same contract — one story across the platform.</text>
+  </svg>
+  <p class="fig">Fig. 5 — OTA: trial boot with automatic rollback; never in the air</p>
+  </div>
+</div></section>
+
+<!-- ============ 06 TIMING ============ -->
+<section id="s06"><div class="wrap">
+  <span class="clause">06 · The timing chain</span>
+  <h2>Why the clock is the product</h2>
+  <p class="standfirst">Every VIO stack fights the same enemy: unknown latency between what the camera saw and what the IMU felt. Garuda's answer is structural — one disciplined clock owns the trigger, the strobe, the IMU and the estimator.</p>
+  <div class="dg">
+  <svg viewBox="0 0 1180 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Timing chain">
+    <rect class="bxg" x="20" y="40" width="230" height="80" rx="3"/>
+    <text class="nmw" x="40" y="70">TSN switch</text>
+    <text class="ptw" x="40" y="90">PTP grandmaster · 1588 HW</text>
+    <text class="ptw" x="40" y="107">optional: CSAC / ZL30 holdover</text>
+    <rect class="bx" x="330" y="40" width="220" height="80" rx="3"/>
+    <text class="nm" x="350" y="70">Mission computer PHC</text>
+    <text class="pt" x="350" y="90">ptp4l → phc2sys</text>
+    <text class="pt" x="350" y="107">offset &lt; 50 µs RMS</text>
+    <rect class="bx" x="630" y="40" width="220" height="80" rx="3"/>
+    <text class="nm" x="650" y="70">Trigger generator</text>
+    <text class="pt" x="650" y="90">PHC-disciplined pulse</text>
+    <text class="pt" x="650" y="107">1.8 V XTR to both cams</text>
+    <rect class="bx" x="930" y="40" width="230" height="80" rx="3"/>
+    <text class="nm" x="950" y="70">Stereo GS cameras</text>
+    <text class="pt" x="950" y="90">simultaneous exposure</text>
+    <text class="pt" x="950" y="107">strobe → capture input</text>
+    <path class="w" d="M250 80 H323" marker-end="url(#ar)"/><text class="lk" x="258" y="72">PTP</text>
+    <path class="w" d="M550 80 H623" marker-end="url(#ar)"/>
+    <path class="w" d="M850 80 H923" marker-end="url(#ar)"/>
+    <rect class="bx" x="330" y="180" width="520" height="70" rx="3"/>
+    <text class="nm" x="350" y="206">Measured, not guessed</text>
+    <text class="pt" x="350" y="226">strobe timestamp − trigger timestamp = true exposure latency → EKF2 external-vision delay set once</text>
+    <path class="wr" d="M1045 120 V215 H857" marker-end="url(#arr)"/><text class="lk" x="870" y="160">strobe return</text>
+    <path class="w" d="M440 120 V173" marker-end="url(#ar)"/>
+    <rect class="bx" x="20" y="180" width="230" height="70" rx="3"/>
+    <text class="nm" x="40" y="206">FC IMU samples</text>
+    <text class="pt" x="40" y="226">stamped in same domain</text>
+    <path class="w" d="M135 180 V128 C 135 124, 135 124, 135 120"/>
+    <text class="pt" x="20" y="285">Volume tier: MEMS + GNSS-disciplined PTP. BVLOS tier: + ZL30xxx holdover. Contested tier: + SA65 CSAC — hours of coherent time with no satellites, feeding this same chain.</text>
+  </svg>
+  <p class="fig">Fig. 6 — The trigger/strobe loop turns EKF2's delay parameter from a tuning exercise into a one-time measurement</p>
+  </div>
+  <div class="kicker-band"><span class="tag">Why competitors cannot copy this cheaply</span>
+  <p>The chain only closes because the switch, the PHYs, the oscillators and the holdover clocks are catalogue parts of the same vendor building the SDK. ModalAI cannot buy an atomic-holdover story from Qualcomm at any price; a DIY integrator can assemble the pieces but inherits the qualification burden Garuda ships as a done deliverable.</p></div>
+</div></section>
+
+<!-- ============ 07 USE CASES ============ -->
+<section id="s07"><div class="wrap">
+  <span class="clause">07 · Drone use cases</span>
+  <h2>Six missions, one stack</h2>
+  <p class="standfirst">Each use case below names the services that carry it and the Microchip silicon it pulls through — because the SDK exists to sell the platform, and every mission should read as a bill of materials.</p>
+  <div class="cols c2">
+    <div class="card">
+      <h4>GPS-denied industrial inspection</h4>
+      <p>Under bridges, inside plants, beside structures that mirror and mask GNSS. VIO carries navigation; the mapper keeps standoff distance; detection flags corrosion or intrusion on the NPU.</p>
+      <p class="svc">vio · mapper · planner · inference · bridge</p>
+      <p class="footnote">Pulls through: CA90 FC, Hailo, TSN switch, 6S ESC/power.</p>
+    </div>
+    <div class="card">
+      <h4>Night operations</h4>
+      <p>Hailo-15's AI-ISP holds VIO feature stability below 0.01 lux — navigation in darkness, not just imaging. v1.5's night profile tunes the ISP for photometric consistency rather than pretty pictures. Almost no incumbent answer exists.</p>
+      <p class="svc">camera (night profile) · vio · inference</p>
+      <p class="footnote">Pulls through: Hailo-15 tier exclusively — a reason to move up from the Pi tier.</p>
+    </div>
+    <div class="card">
+      <h4>Precision landing &amp; delivery</h4>
+      <p>The last four metres: down-camera marker detection fused with ToF depth, immune to low-texture ground that defeats stereo, active illumination for night pads.</p>
+      <p class="svc">inference (marker) · depth plugin (T2/learned) · planner · bridge</p>
+      <p class="footnote">Pulls through: the depth-plugin contract — any customer sensor drops in.</p>
+    </div>
+    <div class="card">
+      <h4>BVLOS corridor logistics</h4>
+      <p>Long routes through urban canyon and tunnels where GNSS ride-through decides certification credibility. ZL30xxx holdover keeps the clock honest through outages; health/failsafe states give the regulator a defensible degradation story.</p>
+      <p class="svc">time (holdover tier) · vio · health · logger (evidence)</p>
+      <p class="footnote">Pulls through: ZL30xxx, CA90 8 MB A/B OTA, telemetry + Remote ID module.</p>
+    </div>
+    <div class="card">
+      <h4>FPV / interceptor perception</h4>
+      <p>Target acquisition under 10 ms and 30+ FPS tracking — Hailo's own demonstrated workload — grafted onto the 30.5 mm PX4 FC tier. Garuda's tracker service feeds intercept guidance over the same bridge contract.</p>
+      <p class="svc">inference (tracker) · bridge · time</p>
+      <p class="footnote">Pulls through: CA70/CA90 FPV FC, 12S ESC, analog VTX path.</p>
+    </div>
+    <div class="card">
+      <h4>Multi-vehicle &amp; ground robots</h4>
+      <p>A shared PTP domain gives swarms a common timebase for sensor fusion and coordinated capture. And the identical stack drives AMRs and rovers — the robotics profile swaps the vehicle model, not the services. Physical AI, one SDK.</p>
+      <p class="svc">time (multi-vehicle) · full stack, Rover profile</p>
+      <p class="footnote">Pulls through: the §17 robotics adjacency — same silicon, ground variant.</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============ 08 COMPARISON ============ -->
+<section id="s08"><div class="wrap">
+  <span class="clause">08 · Competitive comparison</span>
+  <h2>Against the autonomy stacks that exist</h2>
+  <table class="tbl">
+    <thead><tr><th></th><th>Garuda SDK<br>(Microchip + Hailo)</th><th>VOXL SDK<br>(ModalAI / Qualcomm)</th><th>Isaac ROS<br>(NVIDIA Jetson)</th><th>AuterionOS / Skynode</th><th>DIY ROS 2 + PX4</th></tr></thead>
+    <tbody>
+      <tr><td class="rowlab">VIO core</td><td class="win">Basalt, BSD — source shipped</td><td class="lose">mvVISLAM — closed Qualcomm 32-bit binaries</td><td class="lose">cuVSLAM — closed GEM</td><td>integrates third-party</td><td>GPL estimators typical</td></tr>
+      <tr><td class="rowlab">Customer ships closed product</td><td class="win">Yes — permissive end to end</td><td>Partly (glue open, core closed)</td><td>Partly (wrappers open)</td><td>Commercial licence</td><td class="lose">GPLv3 contamination risk</td></tr>
+      <tr><td class="rowlab">Host power class</td><td class="win">2.5–7 W (10H / 15H tiers)</td><td>~6–10 W</td><td class="lose">15–60 W</td><td>~10–15 W</td><td>varies</td></tr>
+      <tr><td class="rowlab">Timing / GNSS-denied clock</td><td class="win">PTP chain + holdover to atomic — unanswerable</td><td class="lose">GNSS-derived, no holdover</td><td class="lose">none productised</td><td class="lose">none productised</td><td>assemble yourself</td></tr>
+      <tr><td class="rowlab">Fault isolation</td><td class="win">Separate FC die, rail, RTOS</td><td>Partition on one die</td><td>Companion-only (needs FC)</td><td class="win">Separate FMU on module</td><td>depends</td></tr>
+      <tr><td class="rowlab">Night capability</td><td class="win">AI-ISP &lt; 0.01 lux (15H tier)</td><td>Conventional ISP</td><td>Sensor-dependent</td><td>Sensor-dependent</td><td>Sensor-dependent</td></tr>
+      <tr><td class="rowlab">Maturity / field hours</td><td class="lose">New — v1 at month 9</td><td class="win">Shipping since 2019, Blue UAS</td><td class="win">Large deployed base</td><td class="win">Enterprise deployments</td><td>varies wildly</td></tr>
+      <tr><td class="rowlab">On-device VLM / LLM</td><td class="win">Hailo-10H tier, 3 W — unique demo</td><td>No</td><td>Yes at 25–60 W</td><td>No</td><td>No</td></tr>
+      <tr><td class="rowlab">Silicon cost (compute)</td><td class="win">~$60–80 class</td><td>Module low hundreds; board $1,199</td><td class="lose">$249–$1,999 modules</td><td>Four figures</td><td>varies</td></tr>
+      <tr><td class="rowlab">Vendor scope</td><td class="win">Whole aircraft: FC + ESC + power + comms + timing + perception</td><td>One SoC + boards</td><td>Compute module only</td><td>FC + OS (buys compute)</td><td>none</td></tr>
+      <tr><td class="rowlab">Business model</td><td>Free SDK sells owned silicon</td><td>Hardware margin + Blue UAS position</td><td>Free SDK sells $$$ modules</td><td>Software licence + hardware</td><td>engineer time</td></tr>
+    </tbody>
+  </table>
+  <h3>Reading it honestly</h3>
+  <div class="cols c3">
+    <div class="card"><h4>Where they win</h4><p>Maturity, everywhere — VOXL has six years of flight hours and Blue UAS; Isaac has the research mindshare and raw compute; Auterion has enterprise fleet tooling. Garuda's answer is not to claim maturity it lacks but to publish benchmarks, logs and losing rows until the evidence accumulates.</p></div>
+    <div class="card"><h4>Where Garuda wins now</h4><p>Openness of the core, licence cleanliness, power class, silicon cost, fault isolation, night capability, the timing chain, and one-vendor scope. Five of those eight are structural — they follow from owning the silicon — and cannot be answered by a software release from any competitor.</p></div>
+    <div class="card"><h4>The strategic difference</h4><p>Every rival monetises the stack or the module. Garuda is free and open because it exists to sell fifteen other Microchip parts on the same aircraft. That inverts the incentive: the more customers fork it, the more silicon ships — which is why openness is the strategy, not a concession.</p></div>
+  </div>
+</div></section>
+
+<!-- ============ 09 LICENSING ============ -->
+<section id="s09" class="flow"><div class="wrap">
+  <span class="clause">09 · Licensing model</span>
+  <h2>Permissive by policy, enforced by CI</h2>
+  <table class="tbl">
+    <thead><tr><th>Layer</th><th>Licence</th><th>Rationale</th></tr></thead>
+    <tbody>
+      <tr><td class="rowlab">Garuda services (ours)</td><td>BSD-3-Clause</td><td>Fork-friendly; every fork is a design-in</td></tr>
+      <tr><td class="rowlab">Inherited estimator / mapping / planning</td><td>Basalt BSD-3 · Voxblox BSD · OMPL BSD · Nav2 Apache</td><td>Customers ship closed products legally</td></tr>
+      <tr><td class="rowlab">Bridges &amp; middleware</td><td>uXRCE-DDS Apache · MAVLink LGPL · ROS 2 Apache</td><td>Ecosystem standard</td></tr>
+      <tr><td class="rowlab">linuxptp</td><td>GPL — daemon at process boundary</td><td>No linking, no contamination</td></tr>
+      <tr><td class="rowlab">HailoRT / DFC models</td><td>Hailo terms (open core; compiler gated)</td><td>Internal post-close</td></tr>
+      <tr><td class="rowlab">v2 DSP kernels</td><td>Closed firmware — the retained moat</td><td>Same pattern as NVIDIA/Qualcomm, inverted: glue open, kernels ours</td></tr>
+      <tr><td class="rowlab">Excluded by policy</td><td colspan="2">GPLv3 estimators (OpenVINS, VINS-Fusion, ORB-SLAM3) · archived PX4-Avoidance · CI licence-scan fails the build on ingress</td></tr>
+    </tbody>
+  </table>
+</div></section>
+
+<!-- ============ 10 ROADMAP ============ -->
+<section id="s10" class="flow"><div class="wrap">
+  <span class="clause">10 · Roadmap &amp; gates</span>
+  <h2>v1 parity → v1.5 differentiation → v2 moat</h2>
+  <table class="tbl">
+    <thead><tr><th>Release</th><th>Contents</th><th>Gate to proceed</th><th>Target</th></tr></thead>
+    <tbody>
+      <tr><td class="rowlab">v1.0</td><td>Twelve services, VOXL feature parity, eval-kit image, apt repo</td><td>VIO ≥20 Hz front end · ≥200 Hz pose · &lt;20 ms latency on Pi 5; PTP &lt;50 µs RMS; camera jitter &lt;100 µs; hover drift &lt;0.5 m / 5 min</td><td>Month 9</td></tr>
+      <tr><td class="rowlab">v1.5</td><td>ToF + learned depth plugins, precision landing, night-VIO profile, multi-vehicle time, AMR profile</td><td>v1 shipped; two external design-ins active</td><td>Month 12–15</td></tr>
+      <tr><td class="rowlab">Hailo-15 port</td><td>Yocto layer, capture backend, HEF recompile, parity report</td><td>Delta table vs Pi baseline → sizes or cancels v2</td><td>Month 12</td></tr>
+      <tr><td class="rowlab">v2.0</td><td>DSP front-end kernels, NPU CV, Dronecode socket standard, patents</td><td>Measured A53 deficit; Cadence toolchain access verified post-close</td><td>Month 18+ conditional</td></tr>
+    </tbody>
+  </table>
+</div></section>
+
+<!-- ============ 11 DEV PLAN ============ -->
+<section id="s11"><div class="wrap">
+  <span class="clause">11 · Development plan &amp; AI-assisted model</span>
+  <h2>Sixteen weeks to flight, nine months to v1</h2>
+  <table class="tbl">
+    <thead><tr><th>Phase</th><th>Weeks</th><th>Delivers</th><th>Gate</th><th>AI share</th></tr></thead>
+    <tbody>
+      <tr><td class="rowlab">0 Scaffold</td><td>0–2</td><td>Repo, interfaces, harnesses, install scripts (fixes pre-baked), bridge configs both sides</td><td>CI green before hardware arrives</td><td>85%</td></tr>
+      <tr><td class="rowlab">1 NPU</td><td>2–3</td><td>Pi 5 + AI HAT+ 2 running models + VLM</td><td>YOLO ≥30 fps</td><td>90%</td></tr>
+      <tr><td class="rowlab">2 Stereo</td><td>3–6</td><td>Camarray synced; IMX296 XTR path (1.8 V, R11)</td><td>jitter &lt;100 µs, 1 h no drops</td><td>70%</td></tr>
+      <tr><td class="rowlab">3 Time</td><td>4–7</td><td>PTP to LAN966x GM; disciplined trigger; strobe loop</td><td>&lt;50 µs RMS switched</td><td>75%</td></tr>
+      <tr><td class="rowlab">4 VIO</td><td>6–10</td><td>Calibrated Basalt live; profiler per stage</td><td><b>the go/no-go numbers</b></td><td>80% code / 0% number</td></tr>
+      <tr><td class="rowlab">5 Bridge</td><td>8–12</td><td>EKF2 fusion, indoor position hold, covariance failsafe demo</td><td>drift &lt;0.5 m / 5 min · CA90 Ethernet verified <b>week 1</b></td><td>85%</td></tr>
+      <tr><td class="rowlab">6 Load + CM5</td><td>10–14</td><td>Concurrent NPU+VIO soak; CM5 + bare M.2 port</td><td>no VIO deficit, no throttle, no brownout</td><td>60%</td></tr>
+      <tr><td class="rowlab">7 Flight</td><td>12–16</td><td>Outdoor GPS-denied hover + waypoints, published logs</td><td>the demo asset</td><td>50%</td></tr>
+      <tr><td class="rowlab">8 Productise</td><td>m4–9</td><td>Portal, logger, OTA, docs, licence audit, eval image</td><td>v1.0</td><td>80%</td></tr>
+      <tr><td class="rowlab">9 Hailo-15 port</td><td>m6–12</td><td>Yocto, backend swap, parity report</td><td>delta table → v2 decision</td><td>65%</td></tr>
+    </tbody>
+  </table>
+  <div class="callout"><span class="tag">The AI-assisted working rules</span>
+  <p><b>Artifacts before code</b> — real <span style="font-family:var(--mf)">uname -a</span>, package versions, camera SKUs and CA90 driver state are fed in before configs are generated. <b>Repo, not fragments</b> — output lands as reviewable commits with tests. <b>Numbers are sacred</b> — no benchmark is ever invented; gates come off the bench into <span style="font-family:var(--mf)">datasets/baselines/</span>. <b>Structural review at midpoints.</b> <b>Red-team each phase</b> — every phase closes with an explicit "argue this result is wrong" pass. Net effect measured on prior ports: ~75% of software authored by AI, calendar compressed by smaller team rather than shorter tail — the bench debug time remains human and irreducible.</p></div>
+  <p><b>Team:</b> 2 core engineers + part-time hardware/bench through Phase 7; +1 for productisation; the same pair executes the Hailo-15 port. Humans own: all wiring and scope work, every empirical number, flight ops, ISP tuning judgement, architecture sign-off, and the v2 Cadence-toolchain kernels.</p>
+</div></section>
+
+<!-- ============ 12 BOM ============ -->
+<section id="s12" class="flow"><div class="wrap">
+  <span class="clause">12 · Bill of materials</span>
+  <h2>Under $2,500 external for the whole programme</h2>
+  <div class="cols c2">
+    <div>
+      <h3>Bench (order now) ≈ $1,300</h3>
+      <table class="tbl"><tbody>
+        <tr><td>Raspberry Pi 5 8 GB ×2 + Active Coolers + 27 W PSUs</td><td>$194</td></tr>
+        <tr><td><b>AI HAT+ 2 (Hailo-10H 40 TOPS, 8 GB) ×2</b></td><td>$260</td></tr>
+        <tr><td>Arducam OV9281 stereo + Camarray HAT</td><td>~$120</td></tr>
+        <tr><td>Raspberry Pi GS (IMX296) ×2 + lenses</td><td>~$150</td></tr>
+        <tr><td>Arducam T2 ToF kit</td><td>$300</td></tr>
+        <tr><td>USB camera, on-board H.264 (recording)</td><td>~$60</td></tr>
+        <tr><td>IMU breakout, storage, cables, misc</td><td>~$180</td></tr>
+        <tr><td>LAN9668-class switch EVB · CA90 FC board</td><td>internal</td></tr>
+      </tbody></table>
+    </div>
+    <div>
+      <h3>Flight prototype ≈ $900</h3>
+      <table class="tbl"><tbody>
+        <tr><td>CM5 8 GB/64 GB (no-wireless) ×2</td><td>$390</td></tr>
+        <tr><td>CM5 IO board + compact dual-CSI/M.2 carrier ×2 <span class="footnote">(verify Hailo compat — one carrier family known-bad)</span></td><td>~$145</td></tr>
+        <tr><td><b>Bare Hailo-10H M.2 2242 8 GB ×2</b> <span class="footnote">(order week 1 — sourcing friction)</span></td><td>~$390</td></tr>
+        <tr><td>5 V ≥6 A vehicle regulator</td><td>~$30</td></tr>
+        <tr><td>Test airframe + your ESC/power boards</td><td>internal</td></tr>
+      </tbody></table>
+      <p class="footnote">Plus one VOXL 2 ($1,199) for the comparative benchmark — the same philosophy as the ESC dyno: beat "good enough" with published measurements, including the rows we lose.</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============ 13 TESTING ============ -->
+<section id="s13" class="flow"><div class="wrap">
+  <span class="clause">13 · Test plan</span>
+  <h2>Seven layers, every gate a number</h2>
+  <table class="tbl">
+    <thead><tr><th>Layer</th><th>What runs</th><th>Pass criteria</th></tr></thead>
+    <tbody>
+      <tr><td class="rowlab">CI</td><td>Unit + contract tests, x86 & cross builds, static analysis, <b>licence scan</b></td><td>Green; build fails on GPLv3 ingress</td></tr>
+      <tr><td class="rowlab">Dataset regression (nightly)</td><td>EuRoC MH/V + TUM-VI through garuda-vio headless; ATE/RTE, Hz, per-stage ms</td><td>No metric worsens &gt;5% vs stored baseline</td></tr>
+      <tr><td class="rowlab">Sync rig</td><td>LED flash + strobe capture across both cameras</td><td>Inter-camera + trigger→exposure jitter &lt;100 µs</td></tr>
+      <tr><td class="rowlab">Time rig</td><td>24 h PTP offset vs grandmaster, switched + point-to-point; Allan deviation</td><td>&lt;50 µs RMS switched; sub-µs P2P sanity</td></tr>
+      <tr><td class="rowlab">Load rig</td><td>VIO + detection + VLM concurrent; thermals, 5 V rail scope, 1 h soak</td><td>No VIO frame deficit, no throttling, no brownout</td></tr>
+      <tr><td class="rowlab">Fault injection</td><td>Kill each service mid-run; camera unplug; PTP loss; VIO kill mid-hover</td><td>Health signals FC; failsafe fires on covariance, never on link</td></tr>
+      <tr><td class="rowlab">Flight cards</td><td>Hover 5 min · square 20 m legs · VIO return-to-start · night (15H tier)</td><td>Drift &lt;0.5 m/5 min; ULog + Garuda log bundle published internally</td></tr>
+    </tbody>
+  </table>
+  <p class="footnote">Phase 9 re-runs layers 2–6 on the Hailo-15H; the delta table is the sole input to the v2 DSP decision. Comparative flight cards on the purchased VOXL 2 feed the pitch deck.</p>
+</div></section>
+
+<!-- ============ 14 RISKS ============ -->
+<section id="s14" class="flow"><div class="wrap">
+  <span class="clause">14 · Risks &amp; open items</span>
+  <h2>Named, owned, front-loaded</h2>
+  <table class="tbl">
+    <thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr><td class="rowlab">CA90 PX4 Ethernet/PTP driver immaturity</td><td>Verify in week 1 — the flagged schedule risk; Phase 5 depends on it</td></tr>
+      <tr><td class="rowlab">Basalt throughput on A53 (port)</td><td>Pi-first converts unknown → measured deficit; DSP offload is the sized response, not a bet</td></tr>
+      <tr><td class="rowlab">Bare 10H M.2 sourcing</td><td>Order week 1; AI HAT+ 2 covers the bench regardless</td></tr>
+      <tr><td class="rowlab">CM5 carrier Hailo compatibility</td><td>Buy two candidates; one family already reported incompatible</td></tr>
+      <tr><td class="rowlab">Cadence Xtensa licence transfer</td><td>Pre-close question list — linchpin of v2; verify before any kernel R&amp;D</td></tr>
+      <tr><td class="rowlab">Hailo-15 mono-GS ISP support</td><td>Pre-close technical question; fallback = ISP bypass on the VIO path</td></tr>
+      <tr><td class="rowlab">GPL ingress by habit</td><td>CI licence gate + audit doc</td></tr>
+      <tr><td class="rowlab">Scope creep</td><td>v1 list frozen by this document; additions queue for v1.5</td></tr>
+      <tr><td class="rowlab">Temperature expectations</td><td>CM5 is −20/+85 °C (no −40 variant exists); AI HAT+ 2 is 0–50 °C bench-only — defence cold-soak lives on the Hailo-15 tier</td></tr>
+    </tbody>
+  </table>
+  <div class="kicker-band"><span class="tag">The closing frame</span>
+  <p>ModalAI needed six years because they also built the real-time partition, the IO layer and the VIO from Qualcomm's closed parts. Garuda inherits the NPU runtime with the acquisition, already flies the real-time half on our own silicon, and assembles the middle from mature permissive open source. Same destination — a fraction of the distance, and the only stack in the class that arrives open.</p></div>
+  <p class="footnote" style="margin-top:14px">Document generated July 2026. All prices, dates and effort figures are planning estimates pending real quotations and bench measurements. Companion documents: garuda-sdk-plan.md (working plan), the platform strategy document, and the two deep-research reports (Garuda SDK parity analysis; Pi 5 + Hailo-10H development plan).</p>
+</div></section>
+
+</body>
+</html>

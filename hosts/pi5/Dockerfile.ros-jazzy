@@ -1,0 +1,37 @@
+# Garuda ROS 2 middleware container — Jazzy on Pi OS host (docs/decisions.md 2026-07-29).
+# Rule: this image is built ONLY from this committed Dockerfile — never pulled-and-modified
+# interactively. Rebuild: docker build -f Dockerfile.ros-jazzy -t garuda/ros-jazzy .
+# Run with: --network=host --ipc=host  (DDS across the container boundary needs both),
+# RMW pinned to CycloneDDS in BOTH worlds.
+#
+# Licences: ros:jazzy base + ROS packages Apache-2.0/BSD; CycloneDDS EPL-2.0/EDL-1.0. No GPLv3.
+
+FROM ros:jazzy-ros-base
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ros-jazzy-rmw-cyclonedds-cpp \
+        ros-jazzy-demo-nodes-cpp \
+        git build-essential cmake \
+    && rm -rf /var/lib/apt/lists/*
+
+# px4_msgs — PX4 uORB message definitions for ROS 2 (BSD-3-Clause).
+# Shallow main; the built image records the exact SHA at /opt/px4_ws/px4_msgs.sha
+# (copy into bench/versions.md after every rebuild).
+RUN mkdir -p /opt/px4_ws/src \
+    && git clone --depth 1 https://github.com/PX4/px4_msgs.git /opt/px4_ws/src/px4_msgs \
+    && git -C /opt/px4_ws/src/px4_msgs rev-parse HEAD > /opt/px4_ws/px4_msgs.sha \
+    && cd /opt/px4_ws \
+    && . /opt/ros/jazzy/setup.sh \
+    && colcon build --merge-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+
+# Micro XRCE-DDS Agent — PX4 <-> DDS bridge daemon (Apache-2.0).
+# SHA recorded at /opt/xrce-agent.sha.
+RUN git clone --depth 1 https://github.com/eProsima/Micro-XRCE-DDS-Agent.git /tmp/agent \
+    && git -C /tmp/agent rev-parse HEAD > /opt/xrce-agent.sha \
+    && cmake -S /tmp/agent -B /tmp/agent/build -DCMAKE_BUILD_TYPE=Release \
+    && cmake --build /tmp/agent/build -j3 \
+    && cmake --install /tmp/agent/build \
+    && ldconfig \
+    && rm -rf /tmp/agent
+
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp

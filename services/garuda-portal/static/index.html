@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Garuda Portal</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <h1>GARUDA portal <span class="muted">&middot; Pi 5 + Hailo-10H bench</span></h1>
+  <nav>
+    <a href="#" data-panel="overview">Overview</a>
+    <a href="#" data-panel="camera">Camera</a>
+    <a href="#" data-panel="depth">Depth</a>
+    <a href="#" data-panel="range">Target Range</a>
+    <a href="#" data-panel="inference">Tracking</a>
+    <a href="#" data-panel="followsim">Follow Sim</a>
+    <a href="#" data-panel="calibration">Calibration</a>
+    <a href="#" data-panel="readiness">Readiness</a>
+    <a href="#" data-panel="settings">Settings</a>
+    <a href="#" data-panel="system">System</a>
+  </nav>
+</header>
+
+<main>
+  <section id="panel-overview" class="panel">
+    <h2>Overview</h2>
+    <div class="tiles">
+      <div class="tile"><span class="tile-label">CPU (4 cores)</span><span class="tile-value" id="tile-cpu">unknown</span><div class="cpu-cores" id="cpu-cores"></div></div>
+      <div class="tile"><span class="tile-label">Load (1m)</span><span class="tile-value" id="tile-load">unknown</span></div>
+      <div class="tile"><span class="tile-label">NPU</span><span class="tile-value" id="tile-npu">unknown</span></div>
+      <div class="tile"><span class="tile-label">NPU rate</span><span class="tile-value" id="tile-npu-fps">idle</span></div>
+      <div class="tile"><span class="tile-label">PCIe (NPU link)</span><span class="tile-value" id="tile-pcie">unknown</span></div>
+      <div class="tile"><span class="tile-label">PCIe in (est.)</span><span class="tile-value" id="tile-pcie-rate">idle</span></div>
+      <div class="tile"><span class="tile-label">Temp</span><span class="tile-value" id="tile-temp">unknown</span></div>
+      <div class="tile"><span class="tile-label">Throttled</span><span class="tile-value" id="tile-throttled">unknown</span></div>
+      <div class="tile"><span class="tile-label">Disk free</span><span class="tile-value" id="tile-disk">unknown</span></div>
+      <div class="tile"><span class="tile-label">Uptime</span><span class="tile-value" id="tile-uptime">unknown</span></div>
+    </div>
+    <h3>Services</h3>
+    <ul id="services-list"><li class="muted">unknown</li></ul>
+  </section>
+
+  <section id="panel-camera" class="panel hidden">
+    <h2>Camera</h2>
+    <p id="camera-banner" class="banner hidden">inference running &mdash; live view below shows the annotated feed (boxes drawn on-NPU)</p>
+    <img id="camera-stream" alt="live camera stream">
+    <div class="actions">
+      <button id="btn-capture-still">Capture still</button>
+      <span id="capture-status" class="muted"></span>
+    </div>
+  </section>
+
+  <section id="panel-depth" class="panel hidden">
+    <h2>Depth <span class="muted">&middot; CamArray stereo (OV9281)</span></h2>
+    <p class="muted">Live stereo depth with a switchable engine &mdash; pick <strong>SGBM</strong> (CPU, true metric cm), <strong>StereoNet</strong>, <strong>fast_depth</strong>, or <strong>scdepthv3</strong> from the buttons below. Runs as the <code>garuda-depth</code> service on the CamArray, so it runs alongside the CM3 follow feed. Compute pauses when you leave this tab.</p>
+    <iframe id="depth-frame" title="stereo depth engine" style="width:100%;height:70vh;border:0;background:#111;border-radius:8px"></iframe>
+    <p class="muted">Bench experiment. The NPU models StereoNet/scdepthv3 are <strong>EVAL-ONLY</strong> by licence (see <code>models/LICENCES.md</code>) &mdash; never shipped; SGBM is the licence-clean metric engine.</p>
+  </section>
+
+  <section id="panel-range" class="panel hidden">
+    <h2>Target Range <span class="muted">&middot; OV9281 stereo (metric)</span></h2>
+    <p class="muted"><strong>Click a detected object</strong> in the view (or pick a class) to lock it &mdash; its distance is triangulated from the left/right pair on the NPU (a real measurement, not a size guess). Standalone: the CM3 <em>Inference</em> feed shares the one NPU, so stop it before ranging. Compute pauses when you leave this tab.</p>
+    <div class="range-bar">
+      <label>Lock class
+        <select id="range-class">
+          <option value="">&mdash; pick &mdash;</option>
+          <option>person</option><option>chair</option><option>bottle</option>
+          <option>laptop</option><option>tv</option><option>cup</option>
+          <option>backpack</option><option>cell phone</option><option>book</option>
+          <option>suitcase</option><option>couch</option>
+        </select>
+      </label>
+      <button id="range-clear" type="button">Clear lock</button>
+      <span class="range-readout">Distance
+        <strong id="range-dist">&mdash;</strong>
+        <span id="range-badge" class="dist-badge"></span>
+      </span>
+    </div>
+    <div class="range-view-wrap">
+      <img id="range-view" alt="stereo-left with detections + metric range">
+    </div>
+  </section>
+
+  <section id="panel-inference" class="panel hidden">
+    <h2>Tracking <span class="muted">&middot; garuda-mono (CM3 + YOLO26 + metric depth)</span></h2>
+    <div class="track-grid">
+      <div class="track-main">
+        <div class="range-bar track-controls">
+          <span class="range-readout">Distance <strong id="trk-dist">&mdash;</strong></span>
+          <label>Depth engine
+            <select id="trk-engine"><option value="y26d">y26d</option><option value="da">da</option></select>
+          </label>
+          <label>Target
+            <select id="trk-class">
+              <option>person</option><option>bicycle</option><option>car</option><option>motorcycle</option><option>airplane</option><option>bus</option><option>train</option><option>truck</option><option>boat</option>
+              <option>traffic light</option><option>fire hydrant</option><option>stop sign</option><option>parking meter</option><option>bench</option><option>bird</option><option>cat</option>
+              <option>dog</option><option>horse</option><option>sheep</option><option>cow</option><option>elephant</option><option>bear</option><option>zebra</option><option>giraffe</option><option>backpack</option>
+              <option>umbrella</option><option>handbag</option><option>tie</option><option>suitcase</option><option>frisbee</option><option>skis</option><option>snowboard</option><option>sports ball</option>
+              <option>kite</option><option>baseball bat</option><option>baseball glove</option><option>skateboard</option><option>surfboard</option><option>tennis racket</option>
+              <option>bottle</option><option>wine glass</option><option>cup</option><option>fork</option><option>knife</option><option>spoon</option><option>bowl</option><option>banana</option><option>apple</option>
+              <option>sandwich</option><option>orange</option><option>broccoli</option><option>carrot</option><option>hot dog</option><option>pizza</option><option>donut</option><option>cake</option><option>chair</option>
+              <option>couch</option><option>potted plant</option><option>bed</option><option>dining table</option><option>toilet</option><option>tv</option><option>laptop</option><option>mouse</option>
+              <option>remote</option><option>keyboard</option><option>cell phone</option><option>microwave</option><option>oven</option><option>toaster</option><option>sink</option>
+              <option>refrigerator</option><option>book</option><option>clock</option><option>vase</option><option>scissors</option><option>teddy bear</option><option>hair drier</option>
+              <option>toothbrush</option>
+            </select>
+          </label>
+          <label>Open-vocab <input id="trk-prompt" placeholder="open-vocab: pen, keys..."></label>
+          <label>True dist (m) <input id="trk-cal-truth" type="number" step=".05" min="0"></label>
+          <button id="trk-cal-add" type="button">cal</button>
+          <button id="trk-cal-reset" type="button">reset</button>
+        </div>
+        <div id="follow-stage" class="stream-wrap hidden">
+          <img id="inference-stream" alt="annotated inference stream">
+          <canvas id="follow-overlay" title="click a detected subject to follow"></canvas>
+        </div>
+        <p id="inference-hint" class="muted hidden">annotated live feed (boxes drawn on the NPU) &mdash; <strong>click a subject on the video to follow</strong>; detections listed in the sidebar</p>
+      </div>
+      <aside class="track-side">
+        <button id="trk-mono-power" type="button" class="mono-power" disabled>mono &mdash;</button>
+        <p id="mono-offline-banner" class="banner hidden">mono offline &mdash; retrying</p>
+        <div id="tracking-banner" class="tracking-banner hidden"><span class="tb-dot"></span><span id="tracking-text">no target</span></div>
+        <span id="trk-gesture" class="gesture-chip hidden"></span>
+        <canvas id="trk-chart" height="70"></canvas>
+        <div id="plan-col" class="plan-col hidden">
+          <div class="plan-title">Drone tracking &middot; commanded motion</div>
+          <canvas id="live-plan" aria-label="commanded drone motion, top-down" title="The virtual drone aims at the tracked subject. The bench camera is fixed, so this is intent, not flight."></canvas>
+          <div class="actions"><button type="button" id="btn-preview" disabled>Preview maneuver</button></div>
+          <div class="inf-stats">
+            <div class="inf-stat"><span class="is-label">CPU</span><span class="is-val" id="inf-cpu">&mdash;</span><div class="cpu-cores" id="inf-cpu-cores"></div></div>
+            <div class="inf-stat"><span class="is-label">Temp</span><span class="is-val" id="inf-temp">&mdash;</span></div>
+            <div class="inf-stat"><span class="is-label">NPU rate</span><span class="is-val" id="inf-npu-fps">idle</span></div>
+            <div class="inf-stat"><span class="is-label">PCIe link</span><span class="is-val" id="inf-pcie">&mdash;</span></div>
+            <div class="inf-stat"><span class="is-label">PCIe in</span><span class="is-val" id="inf-pcie-rate">idle</span></div>
+          </div>
+        </div>
+        <div id="follow-panel" class="follow-panel">
+          <div class="follow-readout">
+            <span id="follow-valid" class="follow-badge muted">no target</span>
+            <span id="follow-reason" class="muted"></span>
+            <button type="button" id="btn-follow-auto" class="follow-pin-btn">Auto (unpin)</button>
+            <span id="follow-pinned-status" class="muted">auto</span>
+          </div>
+          <div class="follow-metrics">
+            <span>target <strong id="follow-target">none</strong></span>
+            <span>distance <strong id="follow-distance">&mdash;</strong> m <span class="muted">(bbox est)</span></span>
+            <span>yaw <strong id="follow-yaw">0.00</strong> rad/s</span>
+            <span>forward <strong id="follow-forward">0.00</strong> m/s</span>
+            <span>vertical <strong id="follow-vertical">0.00</strong> m/s</span>
+          </div>
+        </div>
+        <div class="side-title">Live detections</div>
+        <ul id="detections-list" class="detections-scroll"><li class="muted">no detections yet</li></ul>
+        <details class="track-depth-details">
+          <summary>Stereo depth &middot; OV9281</summary>
+          <div id="track-depth-col" class="depth-col hidden">
+            <img id="track-depth" class="hidden" alt="live stereo depth map">
+            <div id="depth-off-note" class="depth-placeholder">Depth off &mdash; tracking stays light. Pick an engine to start.</div>
+            <div class="depth-engines">
+              <button type="button" class="deng active" data-eng="off">Off</button>
+              <button type="button" class="deng" data-eng="sgbm">SGBM &middot; CPU</button>
+              <button type="button" class="deng" data-eng="stereonet">StereoNet &middot; NPU</button>
+              <button type="button" class="deng deng-rec" data-eng="fast_depth">fast_depth &middot; NPU &#9733;</button>
+            </div>
+            <p class="muted lp-cap" id="depth-eng-status"><strong>Off by default</strong> so it doesn't load the CPU while you track. <strong>SGBM</strong> = CPU metric stereo (~2 cores &mdash; the hog). <strong>StereoNet</strong>/<strong>fast_depth</strong> run on the NPU (capped 6&nbsp;fps &mdash; fast_depth&nbsp;&#9733; ~0.4&nbsp;core, the light pick for live). Per-target distance needs the stereo&harr;CM3 calibration (P0).</p>
+          </div>
+        </details>
+      </aside>
+    </div>
+  </section>
+
+  <section id="panel-calibration" class="panel hidden">
+    <h2>Calibration</h2>
+    <p class="muted">Guided mono intrinsics: manual capture across a 3&times;3 coverage grid, then solve.</p>
+
+    <form id="calib-pattern-form">
+      <label for="calib-cols">Pattern cols</label>
+      <input type="number" id="calib-cols" value="9" min="3" max="20">
+
+      <label for="calib-rows">Pattern rows</label>
+      <input type="number" id="calib-rows" value="6" min="3" max="20">
+
+      <label for="calib-square-mm">Square size (mm)</label>
+      <input type="number" id="calib-square-mm" value="25" min="1" max="200">
+
+      <div class="actions">
+        <button type="button" id="btn-calib-start">Start session</button>
+        <span id="calib-session-status" class="muted"></span>
+      </div>
+    </form>
+
+    <h3>Coverage</h3>
+    <div id="calib-grid" class="calib-grid"></div>
+
+    <div class="actions">
+      <button type="button" id="btn-calib-capture" disabled>Capture</button>
+      <span id="calib-capture-status" class="muted"></span>
+    </div>
+
+    <div class="actions">
+      <button type="button" id="btn-calib-solve" disabled>Solve</button>
+      <span id="calib-verdict" class="calib-verdict"></span>
+    </div>
+
+    <h3>Extrinsics</h3>
+    <div class="calib-staged-card">
+      <div class="calib-staged-title">Camera&ndash;IMU extrinsics</div>
+      <div class="calib-staged-label">requires FC IMU stream</div>
+    </div>
+    <div class="calib-staged-card">
+      <div class="calib-staged-title">Stereo extrinsics</div>
+      <div class="calib-staged-label">requires GS camera pair</div>
+    </div>
+  </section>
+
+  <section id="panel-readiness" class="panel hidden">
+    <h2>Readiness</h2>
+    <div id="readiness-banner" class="readiness-banner hidden"></div>
+    <div class="actions">
+      <button id="btn-readiness-run">Run checks</button>
+      <a id="readiness-download" href="#" class="muted">Download report</a>
+    </div>
+    <div id="readiness-checks" class="readiness-checks"></div>
+  </section>
+
+  <section id="panel-settings" class="panel hidden">
+    <h2>Settings</h2>
+    <div id="settings-status" class="muted"></div>
+    <form id="settings-form">
+      <label for="sim-display">Simulation Mode</label>
+      <input type="text" id="sim-display" readonly>
+
+      <label for="bridge-agent-ip">Bridge Agent IP</label>
+      <input type="text" id="bridge-agent-ip" name="bridge.agent_ip">
+
+      <label for="bridge-agent-port">Bridge Agent Port</label>
+      <input type="number" id="bridge-agent-port" name="bridge.agent_port" min="1024" max="65535">
+
+      <label for="ptp-enabled">
+        <input type="checkbox" id="ptp-enabled" name="ptp.enabled">
+        PTP Enabled
+      </label>
+
+      <label for="camera-default-mode">Camera Default Mode</label>
+      <input type="text" id="camera-default-mode" name="camera.default_mode" placeholder="e.g., vio_x">
+
+      <label for="inference-hef">Inference Model (HEF)</label>
+      <input type="text" id="inference-hef" name="inference.hef" placeholder="e.g., yolov8m_h10.hef">
+      <p class="muted">(V1: saved but not read &mdash; inference always spawns with the yolov8m_h10 default; not wired to the spawn command yet)</p>
+
+      <div class="actions">
+        <button type="button" id="btn-settings-load">Load</button>
+        <button type="button" id="btn-settings-save">Save</button>
+      </div>
+    </form>
+  </section>
+
+  <section id="panel-system" class="panel hidden">
+    <h2>System</h2>
+    <div class="actions">
+      <button id="btn-refresh-logs">Refresh logs</button>
+    </div>
+    <pre id="system-logs" class="logs">(not loaded)</pre>
+  </section>
+
+  <section id="panel-followsim" class="panel hidden">
+    <h2>Follow Sim <span class="muted">&middot; synthetic closed loop (no camera)</span></h2>
+    <p class="muted">The same follow controller (<code>follow_controller.py</code>) driving a simulated drone against a target you control &mdash; the honest preview of the PX4-SITL loop. Numbers here are simulated, not bench measurements.</p>
+    <div class="sim-grid">
+      <div class="sim-stage"><canvas id="sim-radar" aria-label="plan view"></canvas></div>
+      <div class="sim-side">
+        <div class="sim-stage sim-cam-stage"><canvas id="sim-cam" aria-label="camera view"></canvas></div>
+        <div id="sim-fc" class="follow-panel">
+          <div class="follow-readout"><span id="sim-fc-valid" class="follow-badge muted">no target</span><span id="sim-fc-reason" class="muted"></span></div>
+          <div class="follow-metrics">
+            <span>yaw <strong id="sim-fc-yaw">0.00</strong> rad/s</span>
+            <span>forward <strong id="sim-fc-fwd">0.00</strong> m/s</span>
+            <span>size <strong id="sim-fc-size">0.00</strong></span>
+            <span>range <strong id="sim-fc-range">0.0</strong> m</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="sim-controls">
+      <div class="sim-cgroup"><span class="muted">Subject</span>
+        <div id="sim-behavior" class="btns">
+          <button class="seg" data-mode="stand" aria-pressed="true">Stand</button>
+          <button class="seg" data-mode="flee" aria-pressed="false">Run away</button>
+          <button class="seg" data-mode="left" aria-pressed="false">Cross &#9664;</button>
+          <button class="seg" data-mode="right" aria-pressed="false">Cross &#9654;</button>
+        </div>
+      </div>
+      <div class="sim-cgroup"><span class="muted">Speed <span id="sim-speed-val">1.5</span> m/s</span>
+        <input type="range" id="sim-speed" min="0" max="4" step="0.1" value="1.5" aria-label="subject speed">
+      </div>
+      <div class="sim-cgroup"><span class="muted">&nbsp;</span>
+        <div class="btns">
+          <button class="seg" id="sim-occlude" aria-pressed="false">Occlude</button>
+          <button id="sim-pause">Pause</button>
+          <button id="sim-reset">Reset</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="/follow_viz.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

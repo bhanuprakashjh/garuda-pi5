@@ -1,0 +1,12 @@
+[Unit]
+Description=Garuda portal (web configurator)
+After=garuda-configd.service
+
+[Service]
+User=garuda
+ExecStart=/usr/bin/python3 /opt/garuda/garuda-portal/portal.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

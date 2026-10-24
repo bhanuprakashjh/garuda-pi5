@@ -1,0 +1,524 @@
+/* Garuda portal — dark bench aesthetic (matches bench/cam_portal.py palette). */
+
+* { box-sizing: border-box; }
+
+body {
+  background: #101418;
+  color: #dfe7ef;
+  font-family: -apple-system, "Segoe UI", sans-serif;
+  margin: 0;
+}
+
+header {
+  padding: .8rem 1rem;
+  border-bottom: 1px solid #2a3540;
+}
+
+h1 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 .6rem 0;
+  color: #7fd1b9;
+}
+
+h2 { color: #7fd1b9; font-size: 1rem; margin: 0 0 .8rem 0; }
+h3 { color: #9fb0bf; font-size: .85rem; margin: 1.2rem 0 .4rem 0; }
+
+.muted { color: #6b7a88; font-size: .8rem; }
+
+nav { display: flex; flex-wrap: wrap; gap: .3rem; }
+
+nav a {
+  color: #dfe7ef;
+  text-decoration: none;
+  padding: .35rem .7rem;
+  border-radius: 4px;
+  font-size: .85rem;
+  border: 1px solid transparent;
+}
+
+nav a:hover { border-color: #2a3540; }
+
+nav a.active {
+  background: #1a2129;
+  border-color: #7fd1b9;
+  color: #7fd1b9;
+}
+
+main { padding: 1rem; max-width: 960px; margin: 0 auto; }
+
+.panel.hidden { display: none; }
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: .6rem;
+}
+
+.tile {
+  background: #161c22;
+  border: 1px solid #2a3540;
+  border-radius: 6px;
+  padding: .6rem .8rem;
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+}
+
+.tile-label { color: #6b7a88; font-size: .75rem; text-transform: uppercase; letter-spacing: .03em; }
+.tile-value { font-size: 1.1rem; }
+
+ul { list-style: none; margin: 0; padding: 0; }
+li { padding: .25rem 0; border-bottom: 1px solid #1c242c; font-size: .9rem; }
+li.ok { color: #7fd1b9; }
+li.bad { color: #e0876b; }
+
+img#camera-stream {
+  max-width: 100%;
+  width: 100%;
+  border: 1px solid #2a3540;
+  border-radius: 6px;
+  display: block;
+  background: #000;
+}
+
+/* --- Follow overlay: click-on-video target lock (live inference view) --- */
+/* Border lives on the wrapper (not the img) so the overlay canvas — absolutely
+   positioned to the padding box — shares the video's exact content box; drawn
+   boxes and click hit-tests then line up to the pixel. */
+.stream-wrap {
+  position: relative;
+  width: 100%;
+  line-height: 0;
+  border: 1px solid #2a3540;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.stream-wrap.hidden { display: none; }
+img#inference-stream {
+  width: 100%;
+  display: block;
+  background: #000;
+}
+#follow-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+}
+
+.banner {
+  background: #3a2a1a;
+  color: #e0b06b;
+  border: 1px solid #5a4326;
+  border-radius: 4px;
+  padding: .4rem .7rem;
+  font-size: .85rem;
+  margin: 0 0 .6rem 0;
+}
+
+.banner.hidden { display: none; }
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin: .8rem 0;
+  flex-wrap: wrap;
+}
+
+button, select {
+  background: #161c22;
+  color: #dfe7ef;
+  border: 1px solid #2a3540;
+  border-radius: 4px;
+  padding: .4rem .8rem;
+  font-size: .85rem;
+  cursor: pointer;
+}
+
+button:hover { border-color: #7fd1b9; }
+button:disabled { opacity: .4; cursor: not-allowed; }
+
+.logs {
+  background: #0b0e11;
+  border: 1px solid #2a3540;
+  border-radius: 6px;
+  padding: .8rem;
+  font-size: .78rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.readiness-banner {
+  padding: 1rem;
+  border-radius: 6px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  text-align: center;
+  margin: 0 0 .8rem 0;
+}
+
+.readiness-banner.go {
+  background: #1a3a1a;
+  border: 2px solid #2d9d4f;
+  color: #5ed582;
+}
+
+.readiness-banner.caution {
+  background: #3a3a1a;
+  border: 2px solid #9d7f2d;
+  color: #d5c65e;
+}
+
+.readiness-banner.no-go {
+  background: #3a1a1a;
+  border: 2px solid #9d2d2d;
+  color: #d55e5e;
+}
+
+.readiness-banner.hidden {
+  display: none;
+}
+
+.readiness-checks {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+
+.readiness-check {
+  background: #161c22;
+  border: 1px solid #2a3540;
+  border-radius: 6px;
+  padding: .7rem;
+  display: flex;
+  gap: .8rem;
+  align-items: flex-start;
+}
+
+.readiness-check-status {
+  padding: .2rem .5rem;
+  border-radius: 3px;
+  font-size: .75rem;
+  font-weight: 600;
+  min-width: 50px;
+  text-align: center;
+}
+
+.readiness-check-status.pass {
+  background: #2d5a2d;
+  color: #5ed582;
+}
+
+.readiness-check-status.warn {
+  background: #5a5a2d;
+  color: #d5c65e;
+}
+
+.readiness-check-status.fail {
+  background: #5a2d2d;
+  color: #d55e5e;
+}
+
+.readiness-check-status.na {
+  background: #3a3a3a;
+  color: #9fa8b1;
+}
+
+.readiness-check-details {
+  flex: 1;
+}
+
+.readiness-check-id {
+  font-weight: 600;
+  font-size: .9rem;
+  color: #dfe7ef;
+}
+
+.readiness-check-evidence {
+  font-size: .8rem;
+  color: #9fa8b1;
+  margin-top: .2rem;
+}
+
+/* --- Calibration wizard --- */
+
+#calib-pattern-form label {
+  display: inline-block;
+  min-width: 7rem;
+  font-size: .85rem;
+  color: #9fb0bf;
+  margin: .3rem .5rem .3rem 0;
+}
+
+#calib-pattern-form input {
+  background: #161c22;
+  color: #dfe7ef;
+  border: 1px solid #2a3540;
+  border-radius: 4px;
+  padding: .3rem .5rem;
+  width: 5rem;
+  margin-right: 1rem;
+}
+
+.calib-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .3rem;
+  max-width: 220px;
+  margin: .4rem 0 .8rem 0;
+}
+
+.calib-zone {
+  aspect-ratio: 1;
+  border: 1px solid #2a3540;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .9rem;
+  color: #dfe7ef;
+}
+
+.calib-verdict {
+  padding: .3rem .6rem;
+  border-radius: 4px;
+  font-size: .85rem;
+  font-weight: 600;
+}
+
+.calib-verdict.pass { background: #2d5a2d; color: #5ed582; }
+.calib-verdict.marginal { background: #5a5a2d; color: #d5c65e; }
+.calib-verdict.fail { background: #5a2d2d; color: #d55e5e; }
+
+.calib-staged-card {
+  background: #161c22;
+  border: 1px dashed #2a3540;
+  border-radius: 6px;
+  padding: .6rem .8rem;
+  margin: 0 0 .6rem 0;
+  opacity: .5;
+}
+
+.calib-staged-title { font-size: .9rem; color: #dfe7ef; }
+.calib-staged-label { font-size: .78rem; color: #6b7a88; margin-top: .15rem; }
+
+/* --- Follow control (Task 7) --- */
+
+.follow-panel {
+  background: #161c22;
+  border: 1px solid #2a3540;
+  border-radius: 6px;
+  padding: .7rem .8rem;
+  margin: 0 0 .8rem 0;
+}
+
+.follow-readout {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin-bottom: .5rem;
+}
+
+.follow-badge {
+  padding: .2rem .5rem;
+  border-radius: 3px;
+  font-size: .75rem;
+  font-weight: 600;
+}
+
+.follow-badge.ok { background: #2d5a2d; color: #5ed582; }
+.follow-badge.bad { background: #5a3a2d; color: #e0876b; }
+
+.follow-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .9rem;
+  font-size: .82rem;
+  color: #9fb0bf;
+}
+
+.follow-metrics strong { color: #dfe7ef; font-weight: 600; }
+
+.follow-pin-btn {
+  margin-left: .8rem;
+  padding: .15rem .5rem;
+  font-size: .75rem;
+}
+
+#detections-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* --- Follow visualisations: live instrument + Follow Sim --- */
+/* Camera feed and drone-tracking plan side by side */
+.plan-col { flex: 1 1 240px; min-width: 230px; display: flex; flex-direction: column; gap: .45rem; }
+.plan-col.hidden { display: none; }
+.plan-col #live-plan {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  height: auto;
+  border: 1px solid #2a3540;
+  border-radius: 6px;
+  background: #0b0f13;
+  display: block;
+}
+.plan-title { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: #9fb0bf; }
+.lp-cap { margin: 0; max-width: 40ch; }
+.depth-col { flex: 1 1 240px; min-width: 230px; display: flex; flex-direction: column; gap: .45rem; }
+.depth-col.hidden { display: none; }
+.depth-col #track-depth { width: 100%; height: auto; border-radius: 8px; background: #111; display: block; }
+.depth-col #track-depth.hidden { display: none; }
+.depth-placeholder { display: flex; align-items: center; justify-content: center; text-align: center;
+  min-height: 130px; padding: .8rem; border: 1px dashed #2a3a46; border-radius: 8px;
+  background: #10171d; color: #6f8494; font-size: .72rem; line-height: 1.4; }
+.depth-placeholder.hidden { display: none; }
+.depth-engines { display: flex; gap: .3rem; flex-wrap: wrap; }
+.deng { font-size: .68rem; padding: 4px 8px; border: 1px solid #2a3a46; border-radius: 6px; background: #16202a; color: #9fb0bf; cursor: pointer; }
+.deng:hover { border-color: #7fd1b9; color: #cde; }
+.deng.active { border-color: #7fd1b9; color: #cde; background: #1c2c33; }
+
+/* Which subject is being tracked */
+.tracking-banner {
+  display: flex; align-items: center; gap: .55rem;
+  font-weight: 600; font-size: .92rem;
+  padding: .5rem .8rem; border-radius: 6px; margin: 0 0 .7rem 0;
+  border: 1px solid #2a3540; background: #161c22; color: #9fb0bf;
+}
+.tracking-banner.hidden { display: none; }
+.tracking-banner.tracking { border-color: #2d5a2d; background: #16241a; color: #5ed582; }
+.tracking-banner.hold { border-color: #5a4326; background: #241d12; color: #e0b06b; }
+.tb-dot { width: 10px; height: 10px; border-radius: 50%; background: currentColor; box-shadow: 0 0 6px currentColor; flex: none; }
+
+/* Active gesture chip (STOP / FOLLOW ME / POINT L/R) — HUD-only for POINT_*,
+   server-side GestureReactor (gesture_actions.py) acts on STOP/FOLLOW ME. */
+.gesture-chip {
+  display: inline-block; margin: 0 0 .7rem 0;
+  padding: .25rem .6rem; border-radius: 12px; font-size: .8rem; font-weight: 600;
+  background: #16241a; color: #5ed582; border: 1px solid #2d5a2d;
+}
+.gesture-chip.hidden { display: none; }
+
+/* Per-core CPU bars in the Overview tile */
+.cpu-cores { display: flex; gap: 3px; margin-top: 6px; }
+.cpu-core { flex: 1; height: 6px; background: #0e141a; border-radius: 2px; overflow: hidden; }
+.cpu-core-fill { height: 100%; background: #7fd1b9; width: 0; }
+
+/* Compact CPU/NPU stats on the Inference page (right column) */
+.inf-stats {
+  display: flex; flex-direction: column; gap: .35rem;
+  margin-top: .1rem; padding: .55rem .7rem;
+  background: #161c22; border: 1px solid #2a3540; border-radius: 6px;
+}
+.inf-stat { display: flex; align-items: center; gap: .5rem; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .8rem; }
+.is-label { color: #6b7a88; min-width: 62px; text-transform: uppercase; letter-spacing: .03em; font-size: .66rem; }
+.is-val { color: #dfe7ef; font-variant-numeric: tabular-nums; }
+.inf-stat .cpu-cores { flex: 1; margin-top: 0; }
+
+/* Follow Sim panel */
+.sim-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(220px, 1fr);
+  gap: .8rem;
+  align-items: start;
+}
+.sim-stage {
+  border: 1px solid #2a3540;
+  border-radius: 6px;
+  background: #0b0f13;
+  overflow: hidden;
+  line-height: 0;
+}
+#sim-radar { width: 100%; aspect-ratio: 1 / 1; display: block; }
+#sim-cam { width: 100%; aspect-ratio: 4 / 3; display: block; }
+.sim-side { display: flex; flex-direction: column; gap: .8rem; }
+.sim-cam-stage { margin: 0; }
+#sim-fc { margin: 0; }
+
+.sim-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2rem;
+  align-items: center;
+  margin-top: .9rem;
+  padding: .8rem;
+  background: #161c22;
+  border: 1px solid #2a3540;
+  border-radius: 6px;
+}
+.sim-cgroup { display: flex; flex-direction: column; gap: .4rem; font-size: .78rem; }
+.btns { display: flex; gap: .35rem; flex-wrap: wrap; }
+button.seg {
+  font-size: .78rem;
+  color: #9fb0bf;
+  background: #0e141a;
+  border: 1px solid #2a3540;
+  border-radius: 5px;
+  padding: .35rem .6rem;
+  cursor: pointer;
+}
+button.seg:hover { color: #dfe7ef; border-color: #3a4653; }
+button.seg[aria-pressed="true"] { color: #101418; background: #7fd1b9; border-color: #7fd1b9; font-weight: 600; }
+#sim-controls input[type=range], .sim-cgroup input[type=range] { width: 130px; accent-color: #7fd1b9; }
+#btn-preview:disabled { opacity: .45; cursor: not-allowed; }
+
+@media (max-width: 720px) {
+  .sim-grid { grid-template-columns: 1fr; }
+}
+.deng-rec { border-color: #7fd1b9; color: #cde; }
+
+/* --- Target Range panel (Option B: stereo detect+range on OV9281) --- */
+.range-bar { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin: .6rem 0; }
+.range-bar label { font-size: .85rem; color: #9fb0bf; }
+.range-bar select { margin-left: .4rem; }
+.range-readout { font-size: .9rem; color: #9fb0bf; }
+.range-readout strong { color: #7fd1b9; font-size: 1.3rem; font-variant-numeric: tabular-nums; margin: 0 .15rem; }
+.range-view-wrap { line-height: 0; border: 1px solid #2a3540; border-radius: 8px; overflow: hidden; background: #000; }
+#range-view { width: 100%; height: auto; display: block; cursor: crosshair; }
+.dist-badge { font-size: .7rem; padding: 2px 8px; border-radius: 10px; vertical-align: middle; }
+.dist-badge.stereo { background: #143028; color: #5ed5a0; border: 1px solid #2d7d5a; }
+.dist-badge.hold { background: #143028; color: #5ed5a0; opacity: .55; }
+.dist-badge.searching { background: #33301c; color: #d5b45e; }
+
+/* --- Tracking cockpit (2026-08-09 layout spec): Tracking tab breaks out of the
+   960px column; video left (viewport-height-capped), compact always-visible
+   sidebar right; stereo depth is the one collapsed-by-default block. --- */
+main.wide { max-width: none; }
+.track-grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: .8rem; align-items: start; }
+.track-main { min-width: 0; }
+.track-controls { margin: 0 0 .5rem 0; gap: .6rem; }
+.track-controls #trk-prompt { width: 10rem; }
+.track-controls #trk-cal-truth { width: 4.5rem; }
+/* Fit the video to the leftover viewport height: 210px ≈ header (~95) + h2/controls
+   row (~75) + paddings/hint (~40). 16/9 converts the height cap into a width cap. */
+main.wide #follow-stage { max-width: min(100%, calc((100vh - 210px) * 16 / 9)); }
+#inference-hint { margin: .4rem 0 0 0; }
+.track-side { display: flex; flex-direction: column; gap: .55rem; min-width: 0;
+  max-height: calc(100vh - 150px); overflow-y: auto; }
+.track-side .banner, .track-side .tracking-banner, .track-side .follow-panel { margin: 0; }
+.track-side #trk-chart { width: 100%; background: #0b0f13; border: 1px solid #2a3540; border-radius: 8px; }
+/* .plan-col/.depth-col carry row-flex sizing from the old .feed-row layout; inside
+   the column-flex sidebar that basis would become a height — neutralize it. */
+.track-side .plan-col, .track-side .depth-col { flex: none; min-width: 0; }
+.track-side #live-plan { max-width: 200px; margin: 0 auto; }
+.track-side .actions { margin: 0; }
+.track-side .follow-readout { flex-wrap: wrap; }
+.side-title { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: #9fb0bf; }
+.detections-scroll { max-height: 110px; overflow-y: auto; }
+.track-depth-details summary { cursor: pointer; font-size: .72rem; text-transform: uppercase;
+  letter-spacing: .05em; color: #9fb0bf; padding: .2rem 0; }
+.track-depth-details[open] summary { color: #7fd1b9; }
+@media (max-width: 1100px) {
+  .track-grid { grid-template-columns: 1fr; }
+  .track-side { max-height: none; overflow: visible; }
+}
+.mono-power { width: 100%; font-weight: 600; }
+.mono-power[data-active="true"] { border-color: #e0876b; color: #e0876b; }
+.mono-power[data-active="false"] { border-color: #7fd1b9; color: #7fd1b9; }

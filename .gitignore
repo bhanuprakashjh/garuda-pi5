@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Logs & local state
+*.log
+.local/
+
+# Bench artifacts too large for git (regenerate per docs/USER_GUIDE.md)
+bench/results/
+bench/local-baselines/
+*.h264
+*.nv12
+
+# Deployed HEFs live in models/ only; stray copies elsewhere stay out
+*.hef
+!models/*.hef
