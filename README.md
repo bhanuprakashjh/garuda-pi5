@@ -11,8 +11,11 @@ The flight controller (a Microchip PIC32CZ CA90 running PX4) is a **separate dev
 reached over Ethernet. Hard real-time control never runs on this machine, and **nothing in
 this repo arms motors** — any code that could reach PX4 defaults to a simulated endpoint.
 
-> **Provenance:** Private snapshot of the garuda-sdk-bench monorepo, branch
-> `feat/portal-tracking`, taken 2026-10-24. Large bench recordings excluded.
+> **Provenance:** Public repository, updated 2026-11-01 from the garuda-sdk-bench development
+> branches — Pi baseline `feat/portal-tracking` @ `99db1c5`, PC flight lab `feat/px4-gazebo-demo`
+> @ `72e65cf`. First published 2026-10-24 as a snapshot of `feat/portal-tracking` (that commit
+> remains in this repository's history). Large bench recordings, local environments and model
+> binaries other than `models/yolo_world_v2s_h10.hef` are excluded.
 
 > **Numbers are sacred:** every performance figure in this repository was measured on the
 > actual hardware and recorded in [`bench/benchlog.md`](bench/benchlog.md) with a matching
@@ -21,11 +24,38 @@ this repo arms motors** — any code that could reach PX4 defaults to a simulate
 
 ---
 
+## Current status (2026-11-01)
+
+Two things run from this repository today — start with **[docs/DEMO_USER_GUIDE.md](docs/DEMO_USER_GUIDE.md)**:
+
+- **Booth demo on the Pi — `http://<pi>:8098/demo`.** A Microchip / Hailo-10H branded flight
+  console: click-to-lock tracking on the live feed, a virtual-gimbal "drone view", a
+  shadow-flight simulated quad with gesture-commanded takeoff / follow / hold / orbit / land,
+  appearance and optional face re-acquire for returning targets, live telemetry and an attract
+  mode. The camera source auto-selects (CSI preferred, USB UVC fallback).
+- **PC flight lab — `hosts/pc/`.** An isolated PX4 SITL + Gazebo Harmonic + ROS 2 Jazzy
+  (RoboStack via `pixi`) environment on a Linux PC, flown by the Pi's live tracking; optional
+  rendered-camera detection (YOLOX-S on PC CPU) and recorded aerial-footage replay with flight
+  commands disabled. Architecture and measured evidence: [docs/DEMO_HANDOVER.md](docs/DEMO_HANDOVER.md).
+
+Known limitations, dated:
+
+- The bench's Camera Module 3 has been **electrically undetected since 2026-10-24** (cable or
+  module fault; swap pending). The demo runs on a USB webcam; the CSI-preferred branch of the
+  auto-selection is therefore untested until the repair. Metric depth on the webcam is
+  **unvalidated** (the depth model was built for the CM3 optics).
+- Passive cooling **thermally throttles after ~30 min** of continuous detection
+  (`bench/benchlog.md` 2026-10-31). Fit active cooling for any sustained use; fps numbers
+  taken while throttled are marked as such and must not be quoted.
+- **Fresh-machine installation is not validated.** The guide lists the model, Hailo-package and
+  PX4/ROS prerequisites explicitly rather than claiming a one-command install; see
+  [docs/GARUDA_PI5_UPDATE_PLAN.md](docs/GARUDA_PI5_UPDATE_PLAN.md) for the open release gates.
+
 ## What runs on the Pi
 
 | Service | Port | What it does |
 |---|---|---|
-| **garuda-mono** | `:8098` | The perception service. Owns the Camera Module 3; YOLO26m detection on every frame, ByteTrack click-to-lock tracking (coast + re-acquire), monocular depth → metric distance with persistent calibration, open-vocabulary and pose detector modes, MJPEG stream + JSON/SSE API, self-served debug GUI. |
+| **garuda-mono** | `:8098` | The perception service. Owns the camera (CSI CM3 preferred, USB UVC fallback, auto-selected — `GARUDA_MONO_CAM`); serves the booth console at `/demo`; YOLO26m detection on every frame, ByteTrack click-to-lock tracking (coast + re-acquire), monocular depth → metric distance with persistent calibration, open-vocabulary and pose detector modes, MJPEG stream + JSON/SSE API, self-served debug GUI. |
 | **garuda-portal** | `:8080` | The browser configurator: system overview, camera, converged Tracking view (fed by mono's SSE feed), calibration wizard, readiness go/no-go card, settings, logs. |
 | **garuda-configd** | Unix socket | Root-side whitelist-only executor behind the portal (config writes, service start/stop). |
 | **garuda-depth** | `:8097` | Stereo/mono depth explorer for the optional OV9281 CamArray HAT (embedded in the portal's Depth tab). |
@@ -36,7 +66,8 @@ this repo arms motors** — any code that could reach PX4 defaults to a simulate
 |---|---|
 | Raspberry Pi 5, 8 GB | **Passive heatsink only** — plateaus ~84 °C and throttles under sustained load; check `vcgencmd get_throttled` (0x0 = OK) |
 | AI HAT+ 2 (Hailo-10H, 40 TOPS, 8 GB on-module) | Mounted via 30 mm PCIe FFC + 16 mm stacking header |
-| Camera Module 3 (IMX708, rolling shutter) | CSI CAM0. **CSI is NOT hot-pluggable** — attach only with the Pi powered off |
+| Camera Module 3 (IMX708, rolling shutter) | CSI CAM0 — **currently not detected** (no I2C response on either CSI port since 2026-10-24; cable or module fault, swap pending). **CSI is NOT hot-pluggable** — attach only with the Pi powered off |
+| USB webcam (Lenovo FHD, UVC) | Interim camera, 1280×720 MJPG on `/dev/video0`; picked automatically when no CSI camera answers |
 | Power | Official Raspberry Pi 27 W (5 V ⎓ 5 A) USB-C PD supply — **verified on-bench 2026-08-10**; weaker supplies brown out under NPU+camera load |
 | 256 GB microSD | Raspberry Pi OS **Trixie** 64-bit (Debian 13) |
 | Optional | 2× IMX296 global-shutter cameras (VIO, sourcing), Arducam OV9281 CamArray HAT (stereo depth experiments), Arducam ToF (planned) |
@@ -65,16 +96,21 @@ hardware-assembly chapter before touching the CSI connector.
 7. **Fetch models** into `~/garuda-sdk-deploy/models/` (`models/fetch.sh`; the metric depth
    HEF is built on an x86 PC with `models/build_yolo26_depth_hef.sh` — never on the Pi).
 8. **Enable garuda-mono** (see USER_GUIDE §5 for the unit + the `GARUDA_MONO_DEPTH`
-   drop-in), then open `http://10.42.0.128:8098/` (mono GUI) and
-   `http://10.42.0.128:8080/` (portal).
+   drop-in), then open `http://10.42.0.128:8098/demo` (booth console),
+   `http://10.42.0.128:8098/` (mono debug GUI) and `http://10.42.0.128:8080/` (portal).
 9. Optional: stand up the **GarudaBench WiFi AP** with
    `hosts/pi5/setup_wifi_ap.sh --psk <your own passphrase>` — clients reach the portal at
    `http://10.43.0.1:8080`.
 
 ## Documentation
 
-- **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)** — the full guide: assembly, OS + Hailo
-  bring-up, deploying and using the services, networking, benchmarks, troubleshooting.
+- **[docs/DEMO_USER_GUIDE.md](docs/DEMO_USER_GUIDE.md)** — the current demo: Pi packages and
+  models, the `/demo` console and gestures, the PC PX4 / Gazebo / ROS 2 lab, replay, troubleshooting.
+- [docs/DEMO_HANDOVER.md](docs/DEMO_HANDOVER.md) — implementation record and measured evidence
+  for the demo; [docs/px4-demo-isolation.md](docs/px4-demo-isolation.md) — PC lab isolation and
+  recovery; [hosts/pc/README.md](hosts/pc/README.md) — the lab's own readme and next steps.
+- **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)** — the bench guide: assembly, OS + Hailo
+  bring-up, deploying and using the services, portal, networking, benchmarks, troubleshooting.
 - [docs/PORTAL.md](docs/PORTAL.md) — portal design and API reference.
 - [docs/decisions.md](docs/decisions.md) — dated decision log (why Trixie, why h10-only,
   known symptoms and their fixes).
@@ -87,7 +123,8 @@ hardware-assembly chapter before touching the CSI connector.
 |---|---|
 | `services/` | The deployable services: garuda-portal, -configd, -inference, -track, -follow, -mask, -camera. **Licence-clean only** — CI licence-scan fails hard on GPLv3 here. |
 | `interfaces/` | `ICaptureBackend`, `IFrontEnd`, `IDepthSource` + message schemas — THE plugin contract. No Pi-specific calls outside `hosts/pi5/`. |
-| `hosts/pi5/` | Pi-specific code: `garuda_mono.py`, Hailo model wrappers, `install.sh`, `setup_wifi_ap.sh`, systemd units, camera tooling. Idempotent scripts only. |
+| `hosts/pi5/` | Pi-specific code: `garuda_mono.py` (+ `/demo` console assets in `demo/`, `mono_*` modules and tests), Hailo model wrappers, `install.sh`, `setup_wifi_ap.sh`, systemd units, camera tooling. Idempotent scripts only. |
+| `hosts/pc/`, `pixi.toml`, `pixi.lock` | The PC flight lab: launcher and process lifecycle, PX4 SITL start, Gazebo world, ROS 2 bridge helpers, rendered-camera detection, replay. Environment pinned by `pixi.lock`. |
 | `models/` | HEF fetch/build scripts + model cards + `LICENCES.md` (the evaluation zone — any licence may be *evaluated* here, only clean licences graduate to `services/`). |
 | `calib/` | Stereo/intrinsics calibration tooling and targets. |
 | `bench/` | Measurement harnesses, `benchlog.md`, `versions.md`. |

@@ -4,16 +4,26 @@ __pycache__/
 .venv/
 venv/
 
-# Logs & local state
+# Logs & local state / environments (never commit)
 *.log
 .local/
+.local-recovery/
+.runtime/
+.pixi/
+log/
+*.img.xz
 
-# Bench artifacts too large for git (regenerate per docs/USER_GUIDE.md)
-bench/results/
+# Bench artifacts too large for git (regenerate per docs/USER_GUIDE.md).
+# Compact measured reports are re-included explicitly, per directory.
+bench/results/*
+!bench/results/2026-11-01-pc-visual/
 bench/local-baselines/
 *.h264
 *.nv12
+bench/*_probe.png
 
-# Deployed HEFs live in models/ only; stray copies elsewhere stay out
+# Model binaries: only the tracked HEF under models/ is kept (see models/LICENCES.md)
 *.hef
 !models/*.hef
+models/*.onnx
+models/clip_*tokenizer.json

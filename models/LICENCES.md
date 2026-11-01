@@ -17,6 +17,10 @@ exactly like the object-detection models. When a model proves out and is ship-el
 
 ## Manifest
 
+Optional GUI face matching uses **YuNet (MIT)** and **SFace (Apache-2.0)** on the Pi CPU.
+See [model card](face_matching_opencv.md), retained licences in `faces/`, and checksum-pinned
+`fetch_faces.py`. These are distinct from the Hailo-accelerated detection/pose path.
+
 | model | task | licence | ship-eligible | card | notes |
 |---|---|---|---|---|---|
 | **fast_depth** | mono depth | **MIT** | ✅ yes | `fast_depth_h10.md` | NYU-indoor; relative scale; ~221 fps |

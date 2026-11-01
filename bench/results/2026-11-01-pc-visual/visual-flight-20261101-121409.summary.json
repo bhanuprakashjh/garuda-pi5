@@ -1,0 +1,8 @@
+{
+  "log": ".runtime/visual-flight-20261101-121409.jsonl",
+  "follow_samples": 124,
+  "moving_samples": 83,
+  "dropout_held": true,
+  "landed_disarmed": true,
+  "max_command_speed": 0.6607613845195359
+}

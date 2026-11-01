@@ -7,7 +7,7 @@ metric live, and serves its OWN web GUI at http://<pi>:8098/ (video + target pic
 calibration). No portal needed. Compute only while /stream has a viewer.
 LICENCE: YOLO26 (Ultralytics) AGPL-3.0 — bench/eval, not-product-cleared.
 """
-import json, os, subprocess, threading, time
+import glob, json, os, subprocess, threading, time, uuid
 import numpy as np
 import cv2
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -21,8 +21,11 @@ from hailo_yolo26_depth import Yolo26Depth
 from hailo_yolo_world import HailoYoloWorld, N_SLOTS, embed_prompts, set_prompt_checked
 from hailo_yolo_pose import HailoYoloPose
 from bytetrack import ByteTracker
-from mono_state import build_snapshot, attach_kpts
-from mono_gestures import classify_pose, GestureFSM
+from mono_state import build_snapshot, attach_kpts, select_track, positive_range, range_valid
+from mono_demo import asset as demo_asset
+from mono_appearance import describe_people
+from mono_faces import FaceWorker
+from mono_gestures import classify_pose, GestureFSM, track_gestures
 
 YOLO = os.environ.get("GARUDA_MONO_YOLO", "/home/garuda/garuda-sdk-deploy/models/yolo26m.hef")
 WORLD_HEF = "/home/garuda/garuda-sdk-deploy/models/yolo_world_v2s_h10.hef"
@@ -31,6 +34,7 @@ DA_HEF = "/home/garuda/garuda-sdk-deploy/models/depth_anything_v2_vits.hef"
 Y26D_HEF = "/home/garuda/garuda-sdk-deploy/models/yolo26m-depth_hailo_model/yolo26m-depth.hef"
 DA_IN, DA_OUT = "depth_anything_v2_vits/input_layer1", "depth_anything_v2_vits/conv79"
 CAM_W, CAM_H, CAM_FPS = 1280, 720, 15
+CAM_SRC = os.environ.get("GARUDA_MONO_CAM", "auto")  # auto = CSI, else USB UVC | csi = CM3 only | /dev/videoN = that device only
 DEPTH_EVERY = int(os.environ.get("GARUDA_MONO_DEPTH_EVERY", "3"))  # DepthAnything every Nth frame; YOLO26 runs every frame
 CONF = float(os.environ.get("GARUDA_MONO_CONF", "0.15"))          # low floor -> ByteTrack's low-conf stage re-associates flickers
 MAX_LOST = int(os.environ.get("GARUDA_MONO_MAXLOST", "25"))
@@ -50,18 +54,44 @@ _pose = {"det": None}                                             # HailoYoloPos
 _gest = {"fsm": None, "handoff_fsm": None, "handoff_last_id": None,  # subject/bystander GestureFSMs (pose mode only)
          "out": {"name": None, "track_id": None, "held_ms": 0}}
 _vd = {"h": None}                                                 # the shared VDevice (set in main)
-_lockid = {"id": None}                                            # currently locked ByteTrack track id
+_lockid = {"id": None, "pinned": False}                           # explicit clicks never hand off silently
 _ema = {"raw": None}                                              # smoothed depth (steady distance readout)
 EMA_A = float(os.environ.get("GARUDA_MONO_EMA", "0.3"))
 
 _lock = threading.Lock()
 _det_lock = threading.Lock()      # serialises detector swap (create/configure) against loop()'s infer
-_frame = {"img": None, "seq": 0}
+_frame = {"img": None, "seq": 0, "t": 0.0, "source": None, "epoch": uuid.uuid4().hex}
 _state = {"class": "person", "raw": None, "bbox": None, "conf": 0.0, "count": 0, "t": 0.0,
           "dets": [], "tracks_full": []}
 _cal = []
 _fit = None
 _jpg = {"buf": None}
+_streams = {"clean": 0, "annotated": 0}
+_faces = FaceWorker(os.path.expanduser("~/garuda-sdk-deploy/models/faces"))
+_track_gestures = {}
+_stats = {"ids": set(), "fps": 0.0, "_n": 0, "_t0": time.monotonic(), "temp": None, "_tt": 0.0}
+
+
+def _stats_tick(tracks_full):
+    """Demo telemetry: processed-fps over a 2 s window + unique track ids since boot."""
+    for t in tracks_full:
+        _stats["ids"].add(int(t[0]))
+    _stats["_n"] += 1
+    now = time.monotonic()
+    if now - _stats["_t0"] >= 2.0:
+        _stats["fps"] = _stats["_n"] / (now - _stats["_t0"]); _stats["_n"] = 0; _stats["_t0"] = now
+
+
+def _soc_temp():
+    """SoC temperature, read at most every 2 s."""
+    now = time.monotonic()
+    if now - _stats["_tt"] > 2.0:
+        try:
+            _stats["temp"] = round(int(open("/sys/class/thermal/thermal_zone0/temp").read()) / 1000.0, 1)
+        except Exception:
+            _stats["temp"] = None
+        _stats["_tt"] = now
+    return _stats["temp"]
 _viewers = {"n": 0}
 
 
@@ -105,36 +135,91 @@ def _est(raw):
 
 
 def capture_thread():
-    """rpicam-vid MJPEG -> keep the latest CM3 frame (drops backlog so the view stays live)."""
+    """Keep the latest frame from the configured camera (drops backlog so the view stays live).
+
+    GARUDA_MONO_CAM: auto (default) = CSI if a camera answers, else first working USB UVC,
+    re-probing both whenever the active source dies | csi = CM3 only | /dev/videoN = that device only."""
     while True:
-        p = subprocess.Popen(
-            ["rpicam-vid", "-t", "0", "-n", "--camera", "0", "--codec", "mjpeg",
-             "--width", str(CAM_W), "--height", str(CAM_H), "--framerate", str(CAM_FPS),
-             "--inline", "-o", "-"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0)
-        buf = b""
-        try:
-            while True:
-                c = p.stdout.read(8192)
-                if not c:
+        if CAM_SRC == "csi":
+            _run_csi()
+        elif CAM_SRC != "auto":
+            _run_v4l2(CAM_SRC)
+        elif not _run_csi():
+            for dev in _usb_cams():
+                if _run_v4l2(dev):
                     break
-                buf += c
-                while True:
-                    a = buf.find(b"\xff\xd8"); e = buf.find(b"\xff\xd9")
-                    if a != -1 and e != -1 and e > a:
-                        img = cv2.imdecode(np.frombuffer(buf[a:e + 2], np.uint8), cv2.IMREAD_COLOR)
-                        buf = buf[e + 2:]
-                        if img is not None:
-                            with _lock:
-                                _frame["img"] = img; _frame["seq"] += 1
-                    else:
-                        break
-        except Exception:
-            pass
-        try:
-            p.kill()
-        except Exception:
-            pass
         time.sleep(1.0)
+
+
+def _usb_cams():
+    """V4L2 capture nodes that sit on USB (UVC webcams); skips the Pi's ISP/codec nodes."""
+    return ["/dev/" + os.path.basename(p) for p in sorted(glob.glob("/sys/class/video4linux/video*"))
+            if "usb" in os.path.realpath(os.path.join(p, "device"))]
+
+
+def _run_v4l2(dev):
+    """One capture session on a V4L2 device (MJPG, latest-frame-wins). True if it ever delivered."""
+    got = False
+    session_epoch = uuid.uuid4().hex
+    cap = cv2.VideoCapture(dev, cv2.CAP_V4L2)
+    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAM_W)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAM_H)
+    cap.set(cv2.CAP_PROP_FPS, CAM_FPS)
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+    try:
+        while True:
+            ok, img = cap.read()
+            if not ok or img is None:
+                break
+            if not got:
+                got = True; print(f"capture: {dev} (V4L2)", flush=True)
+            with _lock:
+                _frame.update(img=img, seq=_frame["seq"] + 1, t=time.monotonic(), source=dev, epoch=session_epoch)
+    except Exception:
+        pass
+    try:
+        cap.release()
+    except Exception:
+        pass
+    return got
+
+
+def _run_csi():
+    """One rpicam-vid MJPEG session (CM3 on CSI). True if it ever delivered a frame; when no
+    CSI camera is present rpicam-vid exits by itself, so the auto probe falls through quickly."""
+    got = False
+    session_epoch = uuid.uuid4().hex
+    p = subprocess.Popen(
+        ["rpicam-vid", "-t", "0", "-n", "--camera", "0", "--codec", "mjpeg",
+         "--width", str(CAM_W), "--height", str(CAM_H), "--framerate", str(CAM_FPS),
+         "--inline", "-o", "-"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0)
+    buf = b""
+    try:
+        while True:
+            c = p.stdout.read(8192)
+            if not c:
+                break
+            buf += c
+            while True:
+                a = buf.find(b"\xff\xd8"); e = buf.find(b"\xff\xd9")
+                if a != -1 and e != -1 and e > a:
+                    img = cv2.imdecode(np.frombuffer(buf[a:e + 2], np.uint8), cv2.IMREAD_COLOR)
+                    buf = buf[e + 2:]
+                    if img is not None:
+                        if not got:
+                            got = True; print("capture: csi (rpicam-vid)", flush=True)
+                        with _lock:
+                            _frame.update(img=img, seq=_frame["seq"] + 1, t=time.monotonic(), source="csi", epoch=session_epoch)
+                else:
+                    break
+    except Exception:
+        pass
+    try:
+        p.kill()
+    except Exception:
+        pass
+    return got
 
 
 class DepthAnything:
@@ -188,19 +273,21 @@ def loop(det, engines):
             time.sleep(0.2); continue
         with _lock:
             img = _frame["img"]; seq = _frame["seq"]
+            capture_t = _frame["t"]; capture_source = _frame["source"]; capture_epoch = _frame["epoch"]
         if img is None or seq == last_seq:
             time.sleep(0.02); continue
         last_seq = seq
         H, W = img.shape[:2]
         with _lock:
-            want_cls = _state["class"]; lid = _lockid["id"]
+            want_cls = _state["class"]; lid = _lockid["id"]; pinned = _lockid["pinned"]
         if _engine["name"] != cur_engine:                # live engine switch -> drop stale depth/EMA
             depth = None; _ema["raw"] = None; cur_engine = _engine["name"]
         if _detector["gen"] != cur_gen:                  # detector swap -> label space changed, restart tracking
             tracker = _new_tracker(); cur_gen = _detector["gen"]
+            _track_gestures.clear()
             with _lock:
-                _lockid["id"] = None
-            lid = None
+                _lockid.update(id=None, pinned=False)
+            lid = None; pinned = False
         try:
             with _det_lock:                             # never infer while a swap is (re)configuring
                 mode_now = _detector["mode"]
@@ -228,20 +315,11 @@ def loop(det, engines):
         n += 1
         tracker.update([((d.x, d.y, d.w, d.h), d.label, float(d.conf)) for d in dets])
         alive = [t for t in tracker.tracks if t.confirmed and t.time_since_update <= MAX_LOST]
-        # follow the same track id (coasts through misses); else acquire the best track of the class
-        locked = next((t for t in alive if t.track_id == lid), None) if lid is not None else None
-        if locked is None and want_cls:
-            cands = [t for t in alive if t.cls == want_cls]
-            if cands:
-                locked = max(cands, key=lambda t: (t.time_since_update == 0, t.conf))
-        elif locked is not None and locked.time_since_update > REACQ and want_cls:
-            # the lock is coasting but a live detection of the wanted class exists elsewhere ->
-            # the target likely moved too fast for IoU association; jump to the live track
-            live = [t for t in alive if t.cls == want_cls and t.time_since_update == 0]
-            if live:
-                locked = max(live, key=lambda t: t.conf)
+        appearances = describe_people(img, alive)
+        locked = select_track(alive, lid, want_cls, pinned, REACQ)
         with _lock:
-            _lockid["id"] = locked.track_id if locked is not None else None
+            if _lockid["id"] == lid and not pinned:
+                _lockid["id"] = locked.track_id if locked is not None else None
         if locked is not None:
             ebbox = (locked.bbox[0], locked.bbox[1], locked.bbox[2], locked.bbox[3])
             econf = float(locked.conf); coasting = locked.time_since_update > 0
@@ -307,10 +385,20 @@ def loop(det, engines):
             _gest["handoff_last_id"] = None
         with _lock:
             _gest["out"] = gest_out
-            _state.update(raw=raw, bbox=ebbox, conf=econf, count=len(alive), t=time.monotonic(),
-                          dets=seen, tracks_full=tracks_full, lock_coasting=coasting)
+            _state.update(raw=raw, bbox=ebbox, conf=econf, count=len(alive), t=capture_t,
+                          frame_seq=seq, frame_source=capture_source, lock_id=locked.track_id if locked else lid,
+                          frame_epoch=f"{capture_epoch}:{cur_gen}", frame_w=W, frame_h=H,
+                          dets=seen, tracks_full=tracks_full, appearances=appearances,
+                          track_gestures=track_gestures(tracks_full, _track_gestures), lock_coasting=coasting)
+        _faces.submit(img, tracks_full, seq, f"{capture_epoch}:{cur_gen}", capture_t)
+        _stats_tick(tracks_full)
         try:
-            _jpg["buf"] = _draw(img, depth, dets, ebbox, coasting, want_cls, raw)
+            if _streams["annotated"]:
+                _jpg["buf"] = _draw(img, depth, dets, ebbox, coasting, want_cls, raw)
+            if _streams["clean"]:
+                ok, jpg = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 75])
+                if ok:
+                    _jpg["clean"] = jpg.tobytes()
         except Exception as e:
             print("mono draw error:", e)
 
@@ -336,6 +424,8 @@ def _draw(img, depth, dets, ebbox, coasting, cls, raw):
         banner = f"{cls}: locked{tag}  (depth pending)"
     elif est is None:
         banner = f"{cls}: raw {raw:.0f}{tag}  (add 2+ cal points)"
+    elif not positive_range(est):
+        banner = f"{cls}: locked{tag}  (range invalid - recalibrate)"
     elif _fit:
         banner = f"{cls}: {est:.2f} m{tag}  (cal, raw {raw:.2f})"
     else:
@@ -405,6 +495,8 @@ function draw(){const g=ch.getContext('2d');const W=ch.width=ch.clientWidth,H=ch
  const last=vals[vals.length-1];g.fillStyle='#7fd1b9';g.font='bold 13px sans-serif';g.fillText(last.toFixed(2)+' m',W-70,14);}
 </script></main></body></html>"""
 
+# Trade-show assets are served from mono_demo.py and demo/.
+
 
 def make_handler():
     class H(BaseHTTPRequestHandler):
@@ -417,40 +509,51 @@ def make_handler():
         def _snapshot(self):
             with _lock:
                 s = dict(_state)
+            s["faces"] = _faces.snapshot(s.get("frame_epoch"))
             est = _est(s["raw"])
             age = int((time.monotonic() - s["t"]) * 1000) if s["t"] else None
-            valid = s["raw"] is not None and (age is None or age < RANGE_STALE_MS)
+            valid = range_valid(s["raw"], est, _engine["name"], age, s.get("lock_coasting", False))
             return build_snapshot(s, {
-                "lock_id": _lockid["id"], "lock_coasting": s.get("lock_coasting", False),
+                "lock_id": s.get("lock_id"), "lock_coasting": s.get("lock_coasting", False),
                 "est_m": est if valid else None, "valid": valid, "age_ms": age,
                 "depth_engine": _engine["name"],
                 "detector_mode": _detector["mode"], "prompt": list(_detector["prompt"]),
                 "cal_n": len(_cal), "fit": (_fit[0] if _fit else None),
                 "frame_w": CAM_W, "frame_h": CAM_H,
-                "gesture": dict(_gest["out"])})
+                "gesture": dict(_gest["out"]), "face_service": _faces.status(),
+                "stats": {"fps": round(_stats["fps"], 1), "unique_total": len(_stats["ids"]),
+                          "temp_c": _soc_temp()}})
         def do_GET(self):
             p = urlparse(self.path).path
             if p in ("/", "/index.html"):
                 self._send(200, "text/html", PAGE.replace("__CLASSES__", json.dumps(COCO)).encode())
+            elif p == "/demo" or p.startswith("/demo/"):
+                result = demo_asset(p)
+                if result is None:
+                    self._send(404, "text/plain", b"not found")
+                else:
+                    self._send(200, result[0], result[1])
             elif p == "/api/mono_range":
                 with _lock:
                     s = dict(_state)
                 est = _est(s["raw"])
                 age = int((time.monotonic() - s["t"]) * 1000) if s["t"] else None
-                valid = s["raw"] is not None and (age is None or age < RANGE_STALE_MS)
+                valid = range_valid(s["raw"], est, _engine["name"], age, s.get("lock_coasting", False))
                 self._send(200, "application/json", json.dumps({
                     "class": s["class"], "raw": s["raw"] if valid else None, "est_m": est if valid else None,
                     "conf": s["conf"], "count": s["count"], "n_cal": len(_cal),
                     "fit": (_fit[0] if _fit else None), "valid": valid, "cal": _cal,
                     "detected": s["dets"], "age_ms": age}).encode())
             elif p == "/stream":
+                kind = "clean" if parse_qs(urlparse(self.path).query).get("clean") == ["1"] else "annotated"
                 self.send_response(200)
                 self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame"); self.end_headers()
                 with _lock:
                     _viewers["n"] += 1
+                    _streams[kind] += 1
                 try:
                     while True:
-                        b = _jpg["buf"]
+                        b = _jpg.get("clean" if kind == "clean" else "buf")
                         if b:
                             self.wfile.write(b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: " +
                                              str(len(b)).encode() + b"\r\n\r\n" + b + b"\r\n")
@@ -460,6 +563,7 @@ def make_handler():
                 finally:
                     with _lock:
                         _viewers["n"] = max(0, _viewers["n"] - 1)
+                        _streams[kind] = max(0, _streams[kind] - 1)
             elif p == "/api/state":
                 self._send(200, "application/json", json.dumps(self._snapshot()).encode())
             elif p == "/api/events":
@@ -484,10 +588,15 @@ def make_handler():
                 self._send(404, "text/plain", b"nope")
         def do_POST(self):
             u = urlparse(self.path); q = parse_qs(u.query)
-            if u.path == "/api/mono_target":
+            if u.path == "/api/demo_face":
+                value=q.get("enabled", [""])[0]
+                if value not in ("0", "1"):
+                    self._send(400, "application/json", b'{"ok":false}'); return
+                self._send(200, "application/json", json.dumps(_faces.configure(value=="1")).encode())
+            elif u.path == "/api/mono_target":
                 with _lock:
                     _state["class"] = q.get("class", ["person"])[0] or "person"
-                    _lockid["id"] = None                        # re-acquire a track of the new class
+                    _lockid.update(id=None, pinned=False)        # explicit class-mode selection
                 self._send(200, "application/json", b'{"ok":true}')
             elif u.path == "/api/mono_click":     # click (native px) -> lock the TRACK under/nearest it
                 try:
@@ -507,7 +616,7 @@ def make_handler():
                         best_key, picked = key, (tid, lbl)
                 if picked is not None:
                     with _lock:
-                        _lockid["id"] = picked[0]; _state["class"] = picked[1]
+                        _lockid.update(id=picked[0], pinned=True); _state["class"] = picked[1]
                 self._send(200, "application/json",
                            json.dumps({"ok": picked is not None, "class": picked[1] if picked else None}).encode())
             elif u.path == "/api/mono_calibrate":

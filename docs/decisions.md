@@ -565,3 +565,175 @@ Licence: Ultralytics YOLO26(-depth) AGPL-3.0 — bench/eval, not-product-cleared
   same scdepthv3 and its new YOLO26 HEFs are detect/pose only. Locally-compiled yolo26m-depth
   remains the only metric option.
 - Probe gate PASS on deploy (logit std 0.263 vs ~0.04 collapse) — benchlog. Move-test + tape next.
+
+## 2026-10-31 — CM3 electrically dead; USB UVC fallback added to garuda-mono
+
+- **Symptom (2026-10-24, re-confirmed 2026-10-31):** GUI blank, service healthy. Firmware boot
+  probe logs `BSC_A/BSC_B no ACK` (both CSI connectors, 3× each); runtime `dtoverlay imx708`
+  probe fails (imx708 chip-id read error −5 at 0x1a, dw9807 −121 at 0x0c, power applied); full
+  I2C scan 0x03–0x77 of the cam bus silent. Pi-side rp1-cfe/D-PHY/PiSP init fine on BOTH ports.
+  4 reseats across both connectors, correct orientation. Verdict: 22-pin FFC or the CM3 module
+  itself is dead (cable swap pending; module was hot-moved at least once during diagnosis).
+  Software ruled out: config.txt untouched since 2026-08-07, same image that passed first light.
+- **Decision:** bridge with a USB UVC webcam (Lenovo FHD, /dev/video0). `garuda_mono.py` capture
+  is now source-switchable: `GARUDA_MONO_CAM` env (`csi` default = rpicam-vid CM3 path unchanged;
+  `/dev/videoN` = OpenCV V4L2, MJPG, latest-frame-wins). Selected via systemd drop-in `cam.conf`
+  (committed under `hosts/pi5/units/garuda-mono.service.d/`). Revert = remove drop-in or set `csi`.
+- **Caveat:** y26d metric depth was built against CM3 optics — distance readout on the webcam is
+  wrong-scale/UNVALIDATED (detection/tracking unaffected). For usable webcam distances switch
+  `GARUDA_MONO_DEPTH=da` and lay fresh cal points.
+- **Addendum (same day):** `GARUDA_MONO_CAM` default is now `auto` — probe CSI first (rpicam-vid
+  exits on its own when no camera answers), else first USB UVC node (sysfs-filtered, skips
+  pispbe/codec nodes), re-probing both whenever the active source dies. The bench `cam.conf`
+  drop-in was removed (no pin needed); `csi` / `/dev/videoN` remain as forcing overrides.
+  Verified live: boot with dead CM3 + Lenovo UVC → `capture: /dev/video0 (V4L2)` in ~1 s, same
+  ~25 fps stream. CSI-preferred path untestable until the CM3 is repaired (noted).
+
+
+## 2026-10-31 — Microchip / Hailo-10H interactive booth console
+
+Owner requested Microchip branding and the reviewed follow/hold improvements. Replaced
+embedded /demo HTML with local assets in hosts/pi5/demo/, served by the fixed mono_demo.py
+allowlist. Unmodified official black/red Microchip logo source:
+https://ww1.microchip.com/downloads/aemDocuments/documents/legal/Microchip-Logos.zip
+Brand asset, not a software dependency; no new runtime libraries or CDN. Pi 5 is the host,
+Hailo-10H the vision accelerator. Vehicle motion remains browser simulation; no FC commands.
+
+Selection pins a track ID locally; backend explicit clicks no longer silently switch people.
+Loss targets zero velocity, bounded braking then HOLD. Complete identity loss requires a click.
+Capture time, sequence, source and camera/tracker epoch reach snapshots; observation age,
+arrival timeout and frame progress gate movement. Signal-loss testing is local to the browser.
+Same track ID is not biometric identity: ByteTrack association mistakes remain possible.
+
+Default map is schematic without metric position/speed claims. Optional measured four-corner
+floor calibration uses bounding-box feet, rejecting truncated/out-of-zone points. Origin is the
+near-edge centre, not measured camera pose. Confirm saved calibration after reload; redo after
+camera movement. Occluded feet may still map incorrectly. Physical accuracy is TBD-bench.
+Depth estimates are informational; never used for map positioning. Invalid/nonpositive/nonfinite
+fitted values and stale raw fallbacks are suppressed. Relative depth is not labelled metres.
+Clean /stream?clean=1 supports browser overlays. JPEG variants encode only while subscribed;
+concurrent legacy/demo viewers require both encodes. No zero-load/performance claim is made.
+
+Operation: http://10.42.0.128:8098/demo -> Full screen -> select a person -> Test signal loss ->
+End test. Release target resets local selection. Operator controls offer floor calibration and
+reduced decorative motion. STOP gestures pause the selected target if pose mode is active;
+this change does not enable pose mode automatically.
+
+Deployed under /home/garuda/garuda-sdk-deploy/hosts/pi5; restarted only garuda-mono.
+Rollback: copy garuda_mono.py and mono_state.py from /home/garuda/demo-backup-20261031/ to that
+folder, then restart garuda-mono. Old code ignores extra assets. Boot, drivers, models and
+calibration points unchanged. Cooling, crowd walk-test and physical calibration remain pre-show.
+
+## 2026-10-31 — Adjustable simulation and opt-in face/gesture controls
+
+Follow-up: explicit simulated Take off/Land and Follow/Circle buttons. Start grounded;
+target selection alone cannot launch the vehicle. Takeoff climbs vertically to 1.5
+simulated metres; landing brakes then descends even without camera observations. Circle uses
+the gap as orbit radius, preserves existing observation checks, and holds if the entire circle
+would exceed the home travel limit. All altitude/orbit values are illustrative, not aircraft
+commands. Existing follow tests now explicitly set an airborne fixture.
+
+User clarified these commands must also be gestures: demo-only classifier maps T pose
+to circle, crossed wrists over the chest to land, and one-arm-up to takeoff/follow.
+Both hands overhead remain stop/hold. Per-person debounce applies; legacy portal rules
+remain unchanged. Demo launch requires both wrists/shoulders confidently visible so an
+occluded STOP cannot degrade to launch. Landing cannot be interrupted by a follow gesture;
+release and repeat after touchdown to relaunch. Gesture control must be enabled.
+
+Expose follow gap, home travel radius, speed and follow side in /demo. Travel boundary
+takes priority over the requested gap. Distances remain schematic until floor calibration;
+all commands affect only the simulated vehicle. Save motion settings locally in the browser.
+
+Gesture mode uses existing Hailo pose inference with independent per-person debounce.
+One arm up follows/resumes, both arms up stops, horizontal pointing changes follow side.
+Only the selected person commands an active lock; stale/coasting observations cannot command.
+
+Optional face-confirmed return uses OpenCV YuNet (MIT) and SFace (Apache-2.0) on Pi CPU,
+explicitly labeled separately from Hailo detection/pose. Bounded sampling avoids backlog.
+Enrollment requires three distinct consistent face samples and lives only in tab memory.
+Return requires distinct matching face samples; no clothing fallback in face mode. Quality,
+ambiguity and age gates reject uncertain observations. No named identity database or images
+are stored. This is demo matching, not anti-spoofing or validated identity authentication.
+Pinned model fetcher, license texts/model card and unbuilt Yocto recipe accompany the change.
+
+## 2026-10-31 — Returning-person reacquisition for the demo
+
+Owner reported a returning person no longer locked. The prior explicit-ID latch was too
+restrictive for this interaction. Demo now retains an in-memory clothing-colour reference
+and compares fresh person candidates after loss/coasting. A new ID requires appearance
+similarity >=0.90, runner-up margin >=0.10, at least four distinct frames and 800 ms dwell,
+followed by the existing 500 ms movement-acquisition dwell. Return window is 30 seconds.
+Known bystanders are excluded; ambiguous candidates keep HOLD. Camera/tracker epoch changes
+still require selection. These are initial engineering thresholds, not measured identity accuracy.
+
+Descriptors are two 64-bin colour histograms of the central body region, computed from the
+same frame as detection using existing OpenCV/numpy. No extra model, images, persistent gallery
+or face recognition is added. Similar clothing and lighting/view changes remain limitations;
+this is appearance reacquisition, not definitive identification. Real crowd/return accuracy
+is TBD-bench. User asked about face recognition: a future face-confirmation path is feasible,
+but has not been added; Hailo's official face pipeline applies face size/blur/frontality gates.
+
+Backend explicit locks remain pinned; the demo updates its backend target after a successful
+local appearance match. Rollback preceding build: /home/garuda/demo-backup-20261031-reacquire/.
+Updated assets and mono_appearance.py deployed, garuda-mono restarted, browser refreshed.
+
+## 2026-11-01 — Preserve booth demo; isolate PC simulation
+
+Owner asked to retain the working demo as a fallback. Preserve baseline 99db1c5
+under demo-working-20261031 and deployment archive documented in
+px4-demo-isolation.md. Develop only in feat/px4-gazebo-demo. No Pi service,
+detector, model, network or package changes for this milestone.
+
+Use existing PC PX4/Gazebo with a project-local locked RoboStack Jazzy environment
+because no ROS installation or container runtime was present. Generate message
+definitions from the matching PX4 checkout and use XRCE Agent v2.4.3 for this
+build. Keep simulator commands behind GARUDA_SIM=1, a separate ROS domain,
+namespace and local dashboard. This does not replace the product ROS/container
+architecture. Stop this experiment to return to the original demo.
+
+Milestone acceptance is actual SITL takeoff/land, now passed. Booth track mapping
+is explicitly schematic; onboard-camera control and video replay are subsequent
+work. Recorded-video inference must explicitly arbitrate the shared Pi/NPU
+resources rather than silently interrupt the working camera demo.
+
+## 2026-11-01 — Camera-first UI and reuse Hailo-15 visual bench
+
+Owner requested the full camera/control/replay upgrade, pointed to the Hailo-15
+project's existing work, then clarified the web interface should emphasize the
+camera feed. Default remains live Pi camera/Hailo-10H, with Gazebo as a smaller
+live flight view. RGBD onboard-camera and recorded-footage evaluation remain
+explicit source choices; switching requires landed/disarmed state and clears
+selection. Recorded video cannot arm or command a follow trajectory.
+
+Reuse the Hailo-15 Gazebo pixel/depth adapter and existing data, without
+deploying anything to either board. Use a labelled PC CPU detector for the
+isolated visual tests so the Pi camera and NPU remain available. Report source
+and processor truthfully; no CPU throughput is presented as Hailo performance.
+
+The new Pi adapter initially used a constant-range virtual target and had no
+return matcher. Owner reported follow differed from the working demo. Restore
+the original box-height/bearing mapping, radial standoff and conservative
+appearance-return checks. Keep uncertain identity in Hold with an explicit
+confirmation control. Preserve fresh-data/epoch gates and bounded PX4 commands;
+do not substitute actor ground truth or stale target extrapolation for vision.
+
+
+## 2026-11-01 — Demo documentation and garuda-pi5 publication plan
+
+User requested a full implementation record, review of the GitHub Pi snapshot,
+and installation instructions for other users including the PX4 lab. Added
+`DEMO_USER_GUIDE.md`, `DEMO_HANDOVER.md` and `GARUDA_PI5_UPDATE_PLAN.md` alongside
+this log. Consolidated the PC README, corrected root hardware status, and updated
+the isolation contract to reflect the already implemented explicit pose-mode API.
+
+Reviewed remote main `f19835a3347fb0c754103d158bea942cdbfc5e4f`: public repository,
+README still says private, unrelated snapshot history, four remote-only guide/unit/
+model paths to preserve. Plan uses a branch from that snapshot and selective file
+integration, not an unrelated-history merge or force push. No publication or live
+Pi changes were made.
+
+Fresh-machine installation remains unverified. The guide identifies the Hailo
+5.3.0 package/model acquisition gap, fetch.sh's v5.4.0 asset mismatch, both depth
+HEFs being required at startup, moving XRCE transitive dependencies and unrecorded
+QGC version. Existing flight/replay evidence is distinguished from complete-orbit,
+physical gesture, cooled-soak and clean-install tests still pending.

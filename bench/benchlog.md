@@ -1414,3 +1414,245 @@ people in frame traced to designed lock-subject semantics — a stale lock (crea
 FOLLOW ME tests) sat on a non-operator track; non-locked STOP is ignored by design. After
 self-re-lock: STOP held 1.4 s / 3.6 s / 6.95 s continuously, the last surviving a lock id churn
 (356→373) mid-hold. Operator rule recorded in the model card.
+
+## 2026-10-31 — USB UVC capture path sanity (CM3 dead, Lenovo FHD webcam on /dev/video0)
+
+- Harness: 6 s sample of the annotated MJPEG at `/stream` on the Pi (loopback curl), JPEG SOI
+  count + first-frame decode. Environment: fresh-5.3.0 SD as per versions.md 2026-08-07.
+- Result: **149 frames in ~6 s ≈ 24.8 fps at 1280×720** end-to-end (capture → YOLO26m detect →
+  annotate → MJPEG serve). Single sample, bench ambient; no thermal/throttle logging this run
+  (`get_throttled` was 0x0 at boot). Not a gate — a bring-up sanity number.
+- Red-team: fps measured at the stream consumer, so it bounds the whole pipeline, but the UVC
+  camera auto-exposure was indoor-bright; low light will drop camera-side fps. Depth readout on
+  this lens is UNVALIDATED (see decisions.md 2026-10-31) — distance numbers from the webcam
+  must not be quoted.
+
+## 2026-10-31 (later) — trade-show console (/demo) bring-up + thermal reality check
+
+- New `/demo` page live on the bench (USB webcam source). Snapshot now carries
+  `stats {fps, unique_total, temp_c}`; `/demo` HTTP 200; SSE feeding the console.
+- **Thermal: after ~29 min of continuous detect load, `get_throttled` = 0x80008**
+  (soft temp limit ACTIVE + has-occurred) at 82.9 °C on the passive heatsink; processed-loop
+  fps read 7.8 with 9 tracks in frame — a THROTTLED number, do not quote as capability.
+  Consequence for the show: all-day operation REQUIRES active cooling (fan/Active Cooler);
+  re-measure fps after cooling is fitted. Un-throttled console fps: TBD-bench.
+
+
+## 2026-10-31 — Branded demo review and live validation
+
+Original dcfe3dd controller, isolated JS execution: synthetic target at 8 m followed by one
+second coasting gave Hold with speed 2.49999835 m/s toward previous goal y=6 m. Synthetic
+software result, not flight measurement. It also stayed Follow with age_ms=60000/valid=false
+and converted negative fitted range to target 0.5 m. Live pre-change snapshot: est_m=-1.3529696813,
+valid=true, raw_m=0.7877491629; SoC 84.2 C, processed fps=7.6, throttled=0xe0008. Those thermally
+limited rates are NOT benchmarks.
+
+New controller: node --test hosts/pi5/demo/controller.test.js -> 13 passed: braking, stale SSE,
+frozen sequence, disconnect, identity loss, camera restart, reacquisition dwell, pause/fault,
+STOP, invalid ranges, schematic depth independence, floor projection and invalid calibration.
+Python: PYTHONPATH=hosts/pi5:services/garuda-portal python3 -m pytest hosts/pi5/test_mono_state.py
+hosts/pi5/test_mono_demo.py hosts/pi5/test_mono_gestures.py
+services/garuda-portal/tests/test_mono_client.py -q -> 38 passed. Python compile and JS syntax
+checks passed. All are host functional checks, not throughput measurements.
+
+Live /demo, CSS, both JS files and logo returned HTTP 200 and expected MIME types. Clean stream
+probe read 100000 bytes with JPEG SOI. Frame sequence advanced 654 -> 658 over a 0.5 s probe.
+Chrome desktop showed branding, clean video, target selection and FOLLOW; Test signal loss
+showed HOLD while camera stayed live. Physical occlusion, crowd crossing and floor accuracy
+were not validated. Post-deploy sample: 84.2 C, throttled=0xe0008, processed fps=7.9; thermal
+limitation persists, not a usable performance benchmark.
+
+## 2026-10-31 — Returning-target software verification
+
+Controller suite: 20 passed, including new-ID appearance reacquisition, different outfit
+rejection, ambiguous matches, repeated-frame rejection, expiry, known-bystander exclusion and
+camera epoch protection. Host snapshot/demo/portal compatibility checks: 22 passed; OpenCV
+descriptor module skipped because host Python lacks cv2. Its three synthetic-image checks were
+run directly on Pi Python and passed (normalization/colour distinction, invalid/coasting
+exclusion, scale consistency). No dependencies installed. Syntax/compile/diff checks passed.
+After deployment: garuda-mono active, API age_ms=250/frame seq=66; live person #6 carried a
+128-component appearance descriptor, coasting #4 carried none. No physical identity accuracy
+claim or throughput result. Walk-out/walk-back/crowd test remains TBD-bench. Same environment
+as the branded-demo entry in versions.md.
+
+## 2026-10-31 — Adjustable simulation, gestures and optional face return
+
+Controller tests: 31 passed (travel bounds, speed/gap, selected-person gesture ownership,
+stale/disabled gestures, distinct-sample enrollment and guarded face return included).
+Host combined snapshot/demo/gestures/appearance/portal checks: 40 passed, 2 skipped for
+missing host cv2; subsequent per-person gesture plus snapshot/demo suite: 36 passed.
+Two face adapter tests ran directly on Pi and passed. YuNet/SFace loaded and blank-image
+inference returned no faces. Live API produced 17 pose keypoints and a 128-component face
+embedding; face service enabled/available/ready with no error. Chrome showed Face enrolled,
+session only, and user-adjusted gap 4.6. No crowd identity accuracy or physical flight test.
+Pi remained thermally limited (84–85 C, throttled=0xe0008); no performance benchmark claimed.
+
+Deployed optional CPU models, Python adapters and demo assets; garuda-mono restarted active.
+Backup: /home/garuda/demo-backup-20261031-controls/. Restore its Python/demo files and restart
+garuda-mono to roll back. Model files can remain unused. No package, boot or driver changes.
+Face thresholds, physical gesture reliability and calibrated-floor accuracy remain TBD-bench.
+
+## 2026-10-31 — Gesture readout visibility fix
+
+Replaced the disappearing small-text-only status with a permanent large panel above the
+camera. It reports off, starting, stale, wrong mode, no selection, target absent, missing
+pose, no gesture, or recognized gesture plus track ID and gesture name/ID. UI only; gesture
+rules unchanged. JS syntax and diff checks passed. Deployed controls.js/css and verified in
+Chrome: off state, Enable gestures action, select-person state, then NO GESTURE DETECTED for
+selected person #22 with live skeleton. Recognized physical gestures not verified in this check.
+
+## 2026-10-31 — Compact fullscreen dashboard
+
+Reduced gesture typography/padding and added a viewport-sized desktop grid. Camera/map grow
+with available height; controls, telemetry, narration, gimbal and footer remain visible.
+Operator details expand as a scrollable overlay. Smaller viewports retain document scrolling.
+CSS-only change deployed; Chrome desktop and 1920x1080 application fullscreen visually
+checked with all presentation panels visible, including both telemetry rows and footer.
+No inference/controller changes or performance claims. Git diff whitespace check passed.
+
+## 2026-10-31 — Simulated takeoff, landing and target orbit
+
+Controller suite: 36 passed. New cases cover grounded gesture/selection without auto-launch,
+vertical takeoff, braking before descent without camera data, circle traversing all quadrants,
+target-loss braking with frozen orbit phase, travel-limit rejection and landing interrupting
+orbit without automatic relaunch. Existing tests explicitly start airborne where appropriate.
+Deployed controller/app/controls JS and CSS. Chrome showed grounded buttons and then AIRBORNE
+at 1.5 m simulated altitude with FOLLOW. Fullscreen layout with added controls visually checked.
+Live physical circle/landing walkthrough not independently verified; deterministic cases above
+are software simulation tests only. No actual aircraft commands or performance measurements.
+
+## 2026-10-31 — Flight gestures requested by user
+
+Added demo-only T pose/circle and crossed-arms/land classifier; one arm up launches or resumes
+following when gestures are enabled. Both arms overhead remain hold. Portal rules unchanged.
+Python gesture suites: 21 passed (new poses, mirrored crossed arms, confidence and debounce).
+Controller suite: 38 passed (gesture launch/orbit/follow/hold/land, bystander/stale rejection,
+no interrupted landing). Compiled module on Pi, restarted garuda-mono (active), deployed JS.
+Updated gesture legend visually verified and gestures enabled. Physical poses still need
+user walk-test; synthetic tests are not a gesture accuracy benchmark.
+
+## 2026-10-31 — T-pose and orbit usability correction
+
+T-pose now uses shoulder span rather than the arm-expanded detection box, with modest arm
+slope tolerance. Low-confidence/clipped arms produce an explicit GUI hint. Live diagnostic
+samples had shoulders near/below the 720px frame edge and wrist confidence below .1; those
+samples cannot validate a physical T-pose. Orbit radius now shrinks to fit the home boundary
+when at least .5 simulated metres remain; otherwise holds. The map draws the effective radius.
+Tests: 22 Python gesture cases and 39 controller cases pass, including expanded-box regression
+and a 4.6 requested radius with 6 travel limit traversing all quadrants inside the boundary.
+Deployed module/JS, Pi compile passed, garuda-mono active after restart. Browser screenshot
+unavailable this check (window could not be focused); user physical walk-test remains pending.
+
+## 2026-11-01 — PC ROS 2 / PX4 / Gazebo first acceptance
+
+Environment: matching entry in versions.md. Separate feat/px4-gazebo-demo worktree,
+ROS domain 42, PX4 instance 3, namespace garuda_sitl, local dashboard :8099.
+Pi demo :8098 remains running; experiment reads its state without POST requests.
+
+`GARUDA_SIM=1 python3 bench/sitl_smoke.py` passed takeoff and land against the
+real PX4 SITL binary and Gazebo X500 physics. Takeoff sample altitude was
+1.216772273182869 m with command 400/result 0; final landing sample altitude
+-0.018761515617370605 m with command 21/result 0. Harness confirmed landed and
+disarmed. Raw 76 state samples retained in .runtime/takeoff-land.jsonl (local).
+These are functional-test samples, not flight-accuracy or throughput benchmarks.
+Final API check: GROUND, armed false, landed true, telemetry fresh.
+
+Five core tests pass: selected-track gesture onset, stale/epoch/bystander
+rejection, lost-target hold, orbit traversal/speed cap, repeated-frame timeout.
+Baseline worktree git status remains clean. New dashboard visually inspected.
+
+An earlier bridge interruption produced PX4 failsafe/landing; background process
+ownership and logs were added afterward. Arming without a GCS heartbeat was
+denied; isolated QGroundControl provides it without bypassing the check.
+
+Red-team: target coordinates are a schematic booth-camera mapping, not metric
+localization or onboard vision. Passing takeoff/land does not validate person
+following. Full Gazebo orbit and physical gesture walk-test remain TBD-bench;
+Pi was in primary detector mode during final inspection. Optional camera and
+optical-flow Gazebo plugins reported missing. Onboard imagery, recorded-footage
+inference and performance benchmarking remain future stages. No product or
+real-flight readiness gate is ticked by this test.
+
+## 2026-11-01 — Visual source, replay and follow upgrade
+
+Reused Hailo-15 branch b57dd5e's RGBD pixel/depth adapter, walking-person world
+and existing annotated VisDrone SOT data. Original Pi deployment and Hailo-15
+worktree were not modified. PC camera inference is explicitly PC CPU YOLOX,
+not Hailo-10H inference. The main dashboard defaults to live Pi/Hailo-10H;
+Gazebo onboard pixels and recorded footage are explicit alternate modes.
+
+Evidence and limitations: `bench/results/2026-11-01-pc-visual/README.md`.
+Initial visual trial: 83/124 follow samples moved, dropout hold passed, landed
+and disarmed. Max commanded horizontal speed 0.6607613845195359 m/s in that run.
+Operator events interrupted orbit; only 0.45614598692998864 radians of target-
+relative angular travel were observed in its circle interval. This is not a
+full-orbit acceptance pass. The controller was changed afterward (see evidence
+README), so this is functional-path evidence rather than final-version signoff.
+
+Replay, first 120 frames of VisDrone SOT 086: 108 matched, 12 missed, coverage
+0.9 at IoU >= .5, 4 loss events, 3 matched-ID changes. OpenCV DNN run: 2.725565
+processed FPS, latency p95 415.155624 ms. ORT run: 6.955585 processed FPS,
+latency p95 155.628795 ms. Workload differed; not a controlled A/B. All reports
+and raw rows retained. No Hailo performance claim is made.
+
+User reported Pi follow differed from the original simulator. Found constant
+target range in the new adapter and missing appearance-return support. Ported
+the original demo's box-height range mapping and radial standoff, anchored to
+takeoff home; restored conservative .90 similarity / .10 margin / four fresh
+frames / .8 s appearance return confirmation within 30 s. Ambiguous returns
+require explicit operator confirmation. No face identification claim. Filtering
+now restricts follow targets to people, rather than room objects.
+
+Validation after fixes: 61 follow/controller tests and 3 RGB/depth/replay tests
+passed; Python/JS syntax and git whitespace checks passed. Full gesture walk-
+test, final live complete orbit, and crowded-person identity reliability remain
+TBD-bench. Red-team: simulator depth is not physical depth; Pi mapping remains
+schematic, source ingress is not exposure latency, similar clothing can confuse
+appearance, and a 120-frame clip is not a representative accuracy campaign.
+
+## 2026-11-01 — one-window launcher and PX4 gesture setup
+
+Added localhost port 8100 stdlib shell, default original Pi iframe, in-place PX4
+switch, process startup, prerequisite checks, and local path configuration.
+Verified discovery of this PC's PX4 checkout, QGC AppImage, Fuel actor mesh and
+replay dataset; configuration save returned HTTP 200. Browser inspection showed
+both views in the same window. No Pi files or services changed.
+
+Startup testing exposed the PX4 interactive shell spinning on detached stdin;
+launcher now uses PX4 daemon mode. Gazebo descendant cleanup and attachment to
+an existing world prevent duplicate worlds. Middleware starts before SITL.
+A stale DDS session during recovery required restarting the isolated PX4 DDS
+client; final HTTP state reported fresh telemetry. Process status is deliberately
+separate from telemetry readiness. Existing armed sessions are not restarted by
+Start. No new dependencies.
+
+Gesture defect: PX4 checkbox previously enabled only the command consumer while
+Pi detector stayed in primary mode. The checkbox/Enable pose camera now invokes
+the existing Pi pose-mode API, releases the old target, and asks for reselection.
+Browser click verified detector=pose and target cleared. Subsequent operator
+walk-test produced hold at 12:55:10 and takeoff_follow at 12:55:12; sampled state
+was FLYING, armed=true, telemetry_fresh=true, selected ID 494. Orbit and land were
+not certified by this check. This changes shared runtime camera mode only.
+
+Validation: 8 launcher tests, 13 controller/gesture tests, 3 existing vision tests;
+JavaScript syntax and git diff whitespace checks passed. This is functional
+validation, not a performance benchmark or a fresh-machine installation test.
+
+## 2026-11-01 — recover after closing and reopening Gazebo
+
+Reproduced owner report: reopened Gazebo while the original PX4 wrapper and
+controller survived. API reported FAULT, cached armed=true, telemetry_fresh=false.
+The earlier Start action recreated only Gazebo, leaving an incompatible old
+flight session. The wrapper now supervises its owned Gazebo process and ends PX4
+when that process exits. A new SITL start refreshes the controller and DDS agent
+before launching PX4. Start refuses to insert a fresh world under a surviving
+PX4 instance. Added explicit Reset simulation action, scoped to this checkout's
+simulator processes and isolated Gazebo partition; it clears simulated flight
+and selection, with GARUDA_SIM and local-origin gates and PID identity checks.
+
+Live validation: reset recovered GROUND, armed=false, telemetry_fresh=true,
+error empty, no selected target, gestures off. Then terminated the owned Gazebo
+launcher while disarmed to exercise closure: wrapper and PX4 both exited.
+POST Start recreated the session and reached fresh telemetry, GROUND, disarmed,
+no old target, without manually restarting the DDS client. Pi was unchanged.
+13 launcher/lifecycle tests and JavaScript syntax/whitespace checks passed.

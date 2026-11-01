@@ -1,0 +1,19 @@
+[workspace]
+name = "garuda-px4-demo"
+version = "0.1.0"
+description = "Isolated PC ROS 2 environment; never modifies the Pi demo"
+channels = ["https://prefix.dev/robostack-jazzy", "conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+ros-jazzy-ros-base = "*"
+ros-jazzy-rmw-cyclonedds-cpp = "*"
+colcon-common-extensions = "*"
+cmake = ">=3.22,<4"
+ninja = "*"
+cxx-compiler = "*"
+
+[activation.env]
+ROS_DOMAIN_ID = "42"
+ROS_LOCALHOST_ONLY = "1"
+RMW_IMPLEMENTATION = "rmw_cyclonedds_cpp"

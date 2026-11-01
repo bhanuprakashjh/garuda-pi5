@@ -1,0 +1,12 @@
+# Project-local PC evaluation environment; do not install on the Pi.
+numpy==1.26.4
+opencv-python-headless==4.10.0.84
+pillow==11.3.0
+onnxruntime==1.23.2
+coloredlogs==15.0.1
+humanfriendly==10.0
+flatbuffers==25.12.19
+packaging==25.0
+sympy==1.14.0
+mpmath==1.3.0
+# Gazebo transport13/msgs10 and protobuf 4.21.12 come from the existing Ubuntu install.

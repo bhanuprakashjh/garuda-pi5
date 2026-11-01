@@ -109,3 +109,54 @@ class GestureFSM:
         # Calculate held_ms: time since candidate was first seen (only if active)
         held = int((now - self._cand_t) * 1000) if self._active else 0
         return {"name": self._active, "held_ms": held}
+
+
+def classify_demo_pose(kpts, box_w, box_h):
+    """Demo-only flight gestures; leave the existing portal gesture contract unchanged."""
+    if len(kpts) != 17 or box_w <= 0 or box_h <= 0:
+        return None
+    both = all(kpts[i][2] >= CONF_FLOOR for i in (LSHO, RSHO, LWRI, RWRI))
+    if both:
+        ls, rs, lw, rw = (kpts[i] for i in (LSHO, RSHO, LWRI, RWRI))
+        direction = 1 if rs[0] > ls[0] else -1
+        # Body-box width expands with outstretched arms. Normalize by shoulders instead.
+        shoulders = abs(rs[0]-ls[0])
+        left_extension = (ls[0]-lw[0])*direction
+        right_extension = (rw[0]-rs[0])*direction
+        if (shoulders >= 8
+                and left_extension >= .65*shoulders
+                and right_extension >= .65*shoulders
+                and abs(lw[1]-ls[1]) <= .45*left_extension
+                and abs(rw[1]-rs[1]) <= .45*right_extension):
+            return 'circle'
+        # Cross both wrists over the torso midline at chest height.
+        mid = (ls[0]+rs[0])/2
+        chest_top = min(ls[1], rs[1])
+        if ((lw[0]-mid)*direction > .04*box_w
+                and (mid-rw[0])*direction > .04*box_w
+                and all(chest_top <= p[1] <= chest_top+.3*box_h for p in (lw, rw))):
+            return 'land'
+    name = classify_pose(kpts, box_w, box_h)
+    # A partially hidden two-hand STOP must not become a one-arm launch command.
+    if name == 'follow_me' and not both:
+        return None
+    return name
+
+
+def track_gestures(tracks, fsms):
+    """Independent gesture state per person; no bystander can operate another lock."""
+    live_ids = {t[0] for t in tracks}
+    for tid in list(fsms):
+        if tid not in live_ids:
+            del fsms[tid]
+    result = {}
+    for t in tracks:
+        name = None
+        if not t[7] and len(t)>8 and t[8] is not None:
+            name=classify_demo_pose(t[8],t[4],t[5])
+            # New demo uses screen directions; existing portal gesture names unchanged.
+            if name in ('point_left','point_right'):
+                wrist, shoulder = (LWRI,LSHO) if name=='point_left' else (RWRI,RSHO)
+                name='point_left' if t[8][wrist][0]<t[8][shoulder][0] else 'point_right'
+        result[t[0]]=fsms.setdefault(t[0],GestureFSM()).update(name)
+    return result

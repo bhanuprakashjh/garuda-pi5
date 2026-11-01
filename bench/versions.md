@@ -49,3 +49,49 @@ Access: PC `eno1` shared network (NetworkManager profile `pi-share`), Pi at 10.4
 - **Hailo packages**: not yet installed
 - **ethtool**: not installed yet (`ethtool -T eth0` pending — needed before PTP work)
 - **Power**: source at first boot not yet the verified 5 V/5 A supply — verify before any benchmark and re-check `get_throttled` after load
+
+
+## 2026-10-31 — Branded demo validation environment
+
+Pi: Linux raspberrypi 6.18.34+rpt-rpi-2712 #1 SMP PREEMPT Debian
+1:6.18.34-1+rpt1 (2026-06-09), aarch64; Python 3.13.5. USB V4L2 /dev/video0,
+reported 1280x720. Existing Hailo-10H models/installation unchanged, detector primary,
+depth y26d. Observed throttled=0xe0008. garuda-mono :8098 checked in local Chrome.
+Host controller tests: Node v20.19.5. No throughput gate run or claimed.
+
+## 2026-10-31 — Optional demo face models
+
+Existing Pi OpenCV 4.10.0 provides YuNet and SFace APIs. Detection/pose remain on Hailo-10H;
+face descriptors run on Pi CPU in a bounded worker. Model sources pinned to OpenCV Zoo
+48b10fa505aeb51fbd127fc60a5c660040e823b7; SHA-256 values in models/fetch_faces.py.
+YuNet: MIT, 232589 bytes; SFace: Apache-2.0, 38696353 bytes. Installed under
+/home/garuda/garuda-sdk-deploy/models/faces/. License texts and unbuilt Yocto recipe included.
+No runtime package upgrades; same OS/Hailo environment as above.
+
+## 2026-11-01 — Isolated PC simulator
+
+- PC Ubuntu 24.04.4 LTS; existing Gazebo Harmonic 8.10.0.
+- Existing PX4 checkout/build: 47ce421a88ca870eb8d55eccac5f80fc9b368948.
+- ROS 2 Jazzy via project-local RoboStack/Pixi; exact packages in pixi.lock.
+- Pixi 0.83.0 release archive SHA-256:
+  064f371e692aaa3400ac581c89da2843c91437f20c2d9155395a5d0037f33551.
+- Micro XRCE-DDS Agent v2.4.3: 73622810d984349b80bbac0ef55fc0b694d62222.
+- Agent superbuild Fast DDS: adc13326bdb4b9df05405102238ea205d1974478;
+  Fast CDR: 757d5e422253568c487ad97c22e44680fc1ddbaf.
+- ROS message subset generated from the exact local PX4 checkout.
+- Existing QGroundControl AppImage supplies GCS heartbeat with isolated settings.
+- Pi runtime and baseline worktree unchanged by this integration.
+
+### Visual/replay extension, same date
+
+- Local system-Python venv: Python 3.12.3, NumPy 1.26.4, OpenCV 4.10.0
+  (opencv-python-headless 4.10.0.84), Pillow 11.3.0, ONNX Runtime 1.23.2.
+- YOLOX-S OpenCV Zoo revision 48b10fa505aeb51fbd127fc60a5c660040e823b7,
+  model SHA-256 c5c2d13e59ae883e6af3b45daea64af4833a4951c92d116ec270d9ddbe998063.
+- Hailo-15 camera/world reuse from branch revision b57dd5e; existing Mingfei
+  actor v1 in local Fuel cache, CC BY 4.0. No external actor mesh committed.
+- Existing system Gazebo transport13 / msgs10 Python bindings and protobuf
+  4.21.12; no system package or board package upgrades.
+- Model/asset provenance and dependency licences: models/yolox_pc.md.
+- Dataset: existing hailo-export VisDrone2019-SOT-val; source decoded-pixel
+  SHA-256 and model SHA-256 appear in each replay report.

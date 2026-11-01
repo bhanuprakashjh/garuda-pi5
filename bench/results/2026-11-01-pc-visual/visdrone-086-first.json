@@ -1,0 +1,21 @@
+{
+  "scope": "PC CPU, sequential fixed-frame replay; not Hailo performance",
+  "clip": "uav0000086_00870_s",
+  "frames": 120,
+  "model_sha256": "c5c2d13e59ae883e6af3b45daea64af4833a4951c92d116ec270d9ddbe998063",
+  "source_pixels_sha256": "935f83ed9b1feadc18aa19f7652dfab04b5f0e97c8ac1a7d23511c6fa22afd1d",
+  "opencv": "4.10.0",
+  "python": "3.12.3",
+  "processed_fps": 2.725565387648414,
+  "latency_p50_ms": 365.28664000798017,
+  "latency_p95_ms": 415.1556239463389,
+  "inference_p95_ms": 351.6507927677594,
+  "annotated_frames": 120,
+  "matched_frames": 108,
+  "missed_frames": 12,
+  "target_coverage": 0.9,
+  "loss_events": 4,
+  "matched_target_id_changes": 3,
+  "annotation_path": "/media/bhanu1234/Development/hailo-export/datasets/visdrone/VisDrone2019-SOT-val/annotations/uav0000086_00870_s.txt",
+  "limitations": "SOT target coverage at IoU >= 0.5; matched ID changes are not IDF1. No real-time frame dropping. Scene/render load affects PC throughput."
+}

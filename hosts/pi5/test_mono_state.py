@@ -53,3 +53,64 @@ def test_attach_kpts_matches_by_iou():
     assert out[0][8] == kp
     out2 = attach_kpts(tf, [D(500.0, 500.0, 50.0, 50.0, kp)])   # no overlap -> no kpts
     assert len(out2[0]) == 8
+
+
+def test_snapshot_carries_stats_passthrough():
+    st = build_snapshot(STATE, {**EXTRAS, "stats": {"fps": 24.8, "unique_total": 17, "temp_c": 61.2}})
+    assert st["stats"] == {"fps": 24.8, "unique_total": 17, "temp_c": 61.2}
+
+
+def test_snapshot_stats_default_empty():
+    assert build_snapshot(STATE, EXTRAS)["stats"] == {}
+
+
+def test_invalid_fit_is_not_replaced_with_raw_distance():
+    for value in (-1.35, 0, float('nan'), float('inf'), 100):
+        d = build_snapshot(STATE, {**EXTRAS, "est_m": value})["distance"]
+        assert d == {"raw_m": None, "est_m": None, "valid": False}
+
+
+def test_stale_range_is_not_exposed_as_raw_fallback():
+    assert build_snapshot(STATE, {**EXTRAS, "valid": False})["distance"]["raw_m"] is None
+
+
+def test_relative_depth_is_not_labelled_metres():
+    s = build_snapshot(STATE, {**EXTRAS, "depth_engine": "da", "est_m": None})
+    assert s["distance"] == {"raw_m": None, "est_m": None, "valid": False}
+
+
+def test_relative_depth_can_have_large_raw_values_with_valid_calibration():
+    s = build_snapshot({**STATE, "raw": 1000}, {**EXTRAS, "depth_engine": "da", "est_m": 2.5})
+    assert s["distance"] == {"raw_m": None, "est_m": 2.5, "valid": True}
+
+
+def test_snapshot_carries_capture_identity_and_actual_dimensions():
+    s = build_snapshot({**STATE, "frame_seq": 22, "frame_source": "/dev/video0",
+                        "frame_epoch": "abc:0", "frame_w": 640, "frame_h": 480}, EXTRAS)
+    assert s["frame"] == {"seq": 22, "source": "/dev/video0", "epoch": "abc:0", "width": 640, "height": 480}
+
+
+def test_appearance_is_attached_only_to_its_own_track():
+    descriptor = [0.0] * 128
+    s = build_snapshot({**STATE, "appearances": {3: descriptor}}, EXTRAS)
+    assert s["tracks"][0]["appearance"] == descriptor
+    assert "appearance" not in s["tracks"][1]
+
+
+def test_face_and_gesture_are_attached_to_the_correct_subject():
+    face = {"embedding": [0]*128, "sample": "capture-1", "age_ms": 50}
+    gesture = {"name": "stop", "held_ms": 1100}
+    s = build_snapshot({**STATE, "faces": {3: face}, "track_gestures": {7: gesture}}, EXTRAS)
+    assert s["tracks"][0]["face"] == face
+    assert "face" not in s["tracks"][1]
+    assert s["tracks"][1]["gesture"] == gesture
+
+
+def test_explicit_selection_never_switches_to_bystander():
+    from types import SimpleNamespace
+    from mono_state import select_track
+    a = SimpleNamespace(track_id=1, cls="person", time_since_update=9, conf=.6)
+    b = SimpleNamespace(track_id=2, cls="person", time_since_update=0, conf=.9)
+    assert select_track([a, b], 1, "person", True, 5) is a
+    assert select_track([b], 1, "person", True, 5) is None
+    assert select_track([a, b], 1, "person", False, 5) is b

@@ -4,6 +4,12 @@ A complete guide for bringing up and using the Garuda SDK bench tier: a Raspberr
 with a Hailo-10H AI accelerator running live perception services. It assumes you have the
 hardware in hand and **no prior project context**.
 
+> **Looking for the current booth demo (2026-11-01)?** The Microchip / Hailo-10H console at
+> `/demo`, the USB-camera fallback and the PC PX4 / Gazebo flight lab are documented in
+> [DEMO_USER_GUIDE.md](DEMO_USER_GUIDE.md). This guide covers the underlying bench: bring-up,
+> services, portal, calibration and troubleshooting. Where the two disagree on package or
+> model versions, the demo guide (newer, dated) wins.
+
 Conventions used throughout:
 
 - The Pi's bench user is `garuda`; the Pi sits at `10.42.0.128` on the direct-Ethernet
