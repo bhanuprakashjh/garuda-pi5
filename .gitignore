@@ -28,3 +28,6 @@ bench/*_probe.png
 !models/yolo_world_v2s_h10.hef
 models/*.onnx
 models/clip_*tokenizer.json
+
+# Generated testing-release sample (packaged by release/build.py)
+samples/*.avi

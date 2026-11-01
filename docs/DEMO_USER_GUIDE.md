@@ -4,6 +4,11 @@ Updated 2026-11-01. Covers the Hailo-10H Pi camera demo and the separate PC ROS 
 
 **Publication status:** published to the public `bhanuprakashjh/garuda-pi5` `main` on 2026-11-01 together with the Pi demo and PC flight-lab sources (Pi baseline `99db1c5`, lab through `1d28872`); the repository's original October 24 snapshot remains in its history. The remaining release gates (fresh-machine installation, full-orbit and cooled-soak validation) are listed in the [repository update plan](GARUDA_PI5_UPDATE_PLAN.md) and are still open.
 
+For the automated testing installer and downloadable executable/source kit, see
+[release setup](../release/README.md). Its pinned model manifest supersedes broad
+model fetching: it verifies exact baseline bytes, including the known-good pose
+artifact served under a v5.4.0 URL. The manual steps below remain useful for diagnosis.
+
 The existing bench works. A complete installation on a second, clean PC/Pi has **not** been validated. In particular, the Pi requires compatible compiled models and Hailo packages; those are not all supplied by a single installer. This guide identifies those dependencies rather than silently substituting incompatible downloads.
 
 ## 1. Choose what to run
@@ -405,7 +410,7 @@ Before a show, validate direct Pi fallback, both views, selection and loss/retur
 Developer tests use pytest (install it in a separate developer environment if absent):
 
 ```bash
-python3 -m pytest services/garuda-follow/tests hosts/pc/test_lab_launcher.py -q
+PYTHONPATH=hosts/pc python3 -m pytest services/garuda-follow/tests hosts/pc/test_lab_launcher.py -q
 .runtime/vision-env/bin/python -m pytest hosts/pc/test_vision.py -q
 ```
 

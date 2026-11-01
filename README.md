@@ -24,6 +24,14 @@ this repo arms motors** — any code that could reach PX4 defaults to a simulate
 
 ---
 
+## Testing installer release
+
+For other users, start with the [testing release installer guide](release/README.md).
+The prerelease includes an Ubuntu 24.04 x86_64 installer binary, a source/setup kit,
+checksums and a generated replay sample. It automates PC dependencies and checks
+Pi packages/models; vendor Hailo packages and the custom depth artifact remain
+operator-provided. This is an online testing kit, not a fully validated offline image.
+
 ## Current status (2026-11-01)
 
 Two things run from this repository today — start with **[docs/DEMO_USER_GUIDE.md](docs/DEMO_USER_GUIDE.md)**:

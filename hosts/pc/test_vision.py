@@ -29,3 +29,13 @@ def test_replay_end_is_finite_and_does_not_loop(tmp_path):
     r=Replay(dict(path=str(tmp_path),kind='images',fps=30))
     assert r.read().shape==(8,8,3)
     assert r.read() is None and r.done
+
+
+def test_packaged_sample_is_labeled_synthetic_video(tmp_path, monkeypatch):
+    import vision
+    monkeypatch.setattr(vision, 'ROOT', tmp_path)
+    (tmp_path / 'samples').mkdir()
+    (tmp_path / 'samples/playback-check.avi').write_bytes(b'fixture')
+    entry = vision.catalog(tmp_path / 'no-dataset')['garuda-playback-check']
+    assert entry['kind'] == 'video'
+    assert 'not a detection benchmark' in entry['label']

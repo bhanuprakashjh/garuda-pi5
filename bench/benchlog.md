@@ -1656,3 +1656,25 @@ launcher while disarmed to exercise closure: wrapper and PX4 both exited.
 POST Start recreated the session and reached fresh telemetry, GROUND, disarmed,
 no old target, without manually restarting the DDS client. Pi was unchanged.
 13 launcher/lifecycle tests and JavaScript syntax/whitespace checks passed.
+
+
+## 2026-11-01 — Testing installer and release packaging
+
+Built a source/setup kit and Ubuntu 24.04 x86_64 PyInstaller installer for
+v0.2.0-test.1. Installer regression checks: 9 passed; follow/launcher: 74 passed;
+vision: 4 passed. The initial combined pytest invocation needed
+`PYTHONPATH=hosts/pc` under importlib mode; corrected the guide.
+
+Ran the PC vision install stage in a new project-local venv, then through the
+compiled installer: dependency install, verified YOLOX fetch and Gazebo imports
+passed. Generated 120-frame synthetic replay fixture and ran a 12-frame offline
+inference/report smoke (no annotations, null accuracy coverage; no performance
+claim). Preview and doctor ran from an extracted kit without creating runtime
+files; missing dependencies correctly returned exit code 2. Archive per-file
+hashes checked, HEFs/ONNX/local environments excluded.
+
+Read known-good HEF hashes from the existing preserved Pi archive; verified three
+upstream downloads matched. Pose matches the v5.4.0 URL, not the different v5.3.0
+pose download. No model was loaded onto the Pi. Pi SSH timed out; no Pi or running
+simulator changes. Full clean OS installation, new QGC 5.0.8 flight validation,
+full orbit and cooled soak remain open. Details: release/VALIDATION.md.

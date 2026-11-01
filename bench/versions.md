@@ -95,3 +95,20 @@ No runtime package upgrades; same OS/Hailo environment as above.
 - Model/asset provenance and dependency licences: models/yolox_pc.md.
 - Dataset: existing hailo-export VisDrone2019-SOT-val; source decoded-pixel
   SHA-256 and model SHA-256 appear in each replay report.
+
+
+## 2026-11-01 — Testing release build environment
+
+Ubuntu 24.04 x86_64, Python 3.12.3. PyInstaller 6.22.3 with hooks-contrib 2026.9,
+altgraph 0.17.5, packaging 26.3 and setuptools 84.2.1 in a private build venv;
+release/build-requirements.txt pins the tools. Build-only dependency license:
+PyInstaller GPL-2.0 with bootloader exception (Apache-2.0 for specified files);
+unbuilt Yocto documentation stub included. Binary runtime license notices ship
+inside the kit and as a separate archive. No system package changes.
+
+Installer now pins QGC 5.0.8 (upstream asset SHA-256 in dependencies.json; new pin,
+flight not yet tested) and resolves the agent's Fast DDS/CDR tags to the existing
+recorded commit hashes. Pi model hashes derive from preserved baseline 99db1c5.
+The full transitive apt/PX4 Python environment is not an offline lock; installation
+inventories are saved locally by the installer. Synthetic sample generator uses
+OpenCV 4.10.0.84, NumPy 1.26.4 in the newly created vision venv.

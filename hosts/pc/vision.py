@@ -71,6 +71,9 @@ def catalog(root):
         for folder in sorted(base.iterdir()):
             if folder.is_dir() and any(folder.glob('*.jpg')):
                 result[folder.name]=dict(path=str(folder),label='VisDrone · '+folder.name,kind='images',fps=30)
+    sample = ROOT / 'samples/playback-check.avi'
+    if sample.is_file():
+        result['garuda-playback-check'] = dict(path=str(sample), label='Synthetic playback check (not a detection benchmark)', kind='video')
     return result
 
 class Replay:

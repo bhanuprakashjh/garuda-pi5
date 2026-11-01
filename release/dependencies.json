@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "release": "v0.2.0-test.1",
+  "platforms": {
+    "pc": "Ubuntu 24.04 x86_64",
+    "pi": "Raspberry Pi OS Trixie aarch64, Python 3.13, HailoRT 5.3.0"
+  },
+  "px4": {
+    "url": "https://github.com/PX4/PX4-Autopilot.git",
+    "revision": "47ce421a88ca870eb8d55eccac5f80fc9b368948",
+    "license": "BSD-3-Clause"
+  },
+  "agent": {
+    "url": "https://github.com/eProsima/Micro-XRCE-DDS-Agent.git",
+    "revision": "73622810d984349b80bbac0ef55fc0b694d62222",
+    "license": "Apache-2.0",
+    "fastdds": "adc13326bdb4b9df05405102238ea205d1974478",
+    "fastcdr": "757d5e422253568c487ad97c22e44680fc1ddbaf"
+  },
+  "pixi": {
+    "url": "https://github.com/prefix-dev/pixi/releases/download/v0.83.0/pixi-x86_64-unknown-linux-musl.tar.gz",
+    "sha256": "064f371e692aaa3400ac581c89da2843c91437f20c2d9155395a5d0037f33551",
+    "license": "BSD-3-Clause"
+  },
+  "qgc": {
+    "url": "https://github.com/mavlink/qgroundcontrol/releases/download/v5.0.8/QGroundControl-x86_64.AppImage",
+    "sha256": "06969c67ef58ea063def0a8271447a1cc385438c4a7df36813315b4475146737",
+    "license": "upstream QGroundControl licensing; downloaded from upstream, not bundled",
+    "validation": "new installer pin; flight compatibility requires testing"
+  },
+  "actor": {
+    "url": "https://fuel.gazebosim.org/1.0/Mingfei/models/actor/1",
+    "license": "CC-BY-4.0",
+    "author": "Mingfei",
+    "bundled": false
+  },
+  "pi_models": [
+    {
+      "path": "models/yolo26m.hef",
+      "sha256": "27c0d03f11772e2908f2dd6317843076666b02bb430dd5b699e37f7db823e533",
+      "license": "AGPL-3.0, bench evaluation only",
+      "source": "Hailo Model Zoo compiled v5.3.0 / Hailo-10H",
+      "url": "https://hailo-model-zoo.s3.eu-west-2.amazonaws.com/ModelZoo/Compiled/v5.3.0/hailo10h/yolo26m.hef"
+    },
+    {
+      "path": "models/yolov8m_pose_h10.hef",
+      "sha256": "4a9af131cd9d089c4986e8baa934e4b28e3deefd34f53e1d44533d7d25027542",
+      "license": "AGPL-3.0, bench evaluation only",
+      "source": "Exact upstream bytes match archived 99db1c5 pose HEF (5.4.0 URL); not a blanket runtime compatibility claim",
+      "url": "https://hailo-model-zoo.s3.eu-west-2.amazonaws.com/ModelZoo/Compiled/v5.4.0/hailo10h/yolov8m_pose.hef"
+    },
+    {
+      "path": "models/depth_anything_v2_vits.hef",
+      "sha256": "54e454d4406042451712feaff480c60abed885bb6d02435979894c1c7ed04535",
+      "license": "Apache-2.0 model; compiled artifact terms must also be observed",
+      "source": "Hailo Model Zoo compiled v5.3.0 / Hailo-10H",
+      "url": "https://hailo-model-zoo.s3.eu-west-2.amazonaws.com/ModelZoo/Compiled/v5.3.0/hailo10h/depth_anything_v2_vits.hef"
+    },
+    {
+      "path": "models/yolo26m-depth_hailo_model/yolo26m-depth.hef",
+      "sha256": "e8914dd26c6bb06a5ac5f5f5e516f18b3a8343353b2c81c1116d8736f4a9f8fb",
+      "license": "AGPL-3.0, bench evaluation only",
+      "source": "custom build; models/build_yolo26_depth_hef.sh"
+    },
+    {
+      "path": "models/yolo26m-depth_hailo_model/metadata.yaml",
+      "sha256": "7aba77499652a3099967d0f8d88f2d297dd668c1d1555e5d461b8be528198a24",
+      "license": "associated custom depth model metadata",
+      "source": "same custom depth build"
+    }
+  ],
+  "pi_model_hash_provenance": "Read from preserved deployment.tar baseline 99db1c5; archive SHA256 86693c5fba99cba02053de9199674851c1cceee68a6fe0398bd930f4971e81cb. No Pi package or runtime change.",
+  "not_bundled": [
+    "Hailo runtime/driver/wheel",
+    "evaluation HEFs",
+    "PX4 build",
+    "ROS packages",
+    "QGroundControl",
+    "Gazebo actor",
+    "VisDrone or private videos"
+  ]
+}
