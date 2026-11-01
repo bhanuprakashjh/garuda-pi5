@@ -22,8 +22,9 @@ bench/local-baselines/
 *.nv12
 bench/*_probe.png
 
-# Model binaries: only the tracked HEF under models/ is kept (see models/LICENCES.md)
+# Model binaries are not committed. The single pre-existing tracked HEF is the only
+# exception (see models/LICENCES.md); any other HEF stays out until an explicit review.
 *.hef
-!models/*.hef
+!models/yolo_world_v2s_h10.hef
 models/*.onnx
 models/clip_*tokenizer.json

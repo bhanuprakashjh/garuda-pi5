@@ -78,8 +78,10 @@ never plain `hailort`/`hailo-all`** (that is the Hailo-8 line and will not drive
 
 ## Quick start
 
-Full detail with cautions in **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)** — read its
-hardware-assembly chapter before touching the CSI connector.
+Follow **[docs/DEMO_USER_GUIDE.md §3 "Prepare a new Pi"](docs/DEMO_USER_GUIDE.md)** for the
+authoritative, dated installation steps; the outline below is a map of that chapter, not a
+substitute. Read [docs/USER_GUIDE.md](docs/USER_GUIDE.md) §2 (hardware assembly) before
+touching the CSI connector.
 
 1. **Assemble powered off:** Pi 5 + AI HAT+ 2 (FFC + stacking header), Camera Module 3 on
    CAM0 (gold contacts toward the Ethernet jack at the Pi end), 27 W 5 V/5 A USB-C supply.
@@ -89,15 +91,26 @@ hardware-assembly chapter before touching the CSI connector.
    profile — the Pi lands on `10.42.0.x` (bench convention: `10.42.0.128`).
 4. **Copy the repo to the Pi:**
    `rsync -a --exclude .git ./ garuda@10.42.0.128:~/garuda-sdk-deploy/`
-5. **Provision:** on the Pi, run `~/garuda-sdk-deploy/hosts/pi5/install.sh` (idempotent —
-   installs `hailo-h10-all`, deploys the portal/configd/depth services).
+5. **Install a matched Hailo-10H stack** (DEMO_USER_GUIDE §3 "Install a matched Hailo-10H
+   stack"). The recorded working set is runtime + firmware + PCIe driver + CPython 3.13
+   binding all at **5.3.0**. `sudo apt-get install hailo-h10-all` does *not* guarantee that
+   version — check `apt-cache policy hailo-h10-all` first, never mix the `hailo-all`
+   (Hailo-8) family in, and never install a stray wheel over distribution bindings.
+   `hosts/pi5/install.sh` is the **older portal/configd/depth installer, not a demo
+   installer** — its full mode changes sudo policy and installs legacy GenAI tooling that
+   this demo does not need.
 6. **Sanity check:** `hailortcli fw-control identify` must report **HAILO10H**, and
    `vcgencmd get_throttled` must read `0x0`.
-7. **Fetch models** into `~/garuda-sdk-deploy/models/` (`models/fetch.sh`; the metric depth
-   HEF is built on an x86 PC with `models/build_yolo26_depth_hef.sh` — never on the Pi).
-8. **Enable garuda-mono** (see USER_GUIDE §5 for the unit + the `GARUDA_MONO_DEPTH`
-   drop-in), then open `http://10.42.0.128:8098/demo` (booth console),
-   `http://10.42.0.128:8098/` (mono debug GUI) and `http://10.42.0.128:8080/` (portal).
+7. **Place models** per DEMO_USER_GUIDE §3 "Source and models". **Do not run
+   `models/fetch.sh` as setup** — it points at compiled v5.4.0 assets while the runtime is
+   5.3.0, and it does not fetch the custom models. Each required HEF, its compatible
+   version and licence is listed in the guide and `models/LICENCES.md`; the metric depth HEF
+   is built on an x86 PC with `models/build_yolo26_depth_hef.sh`, never on the Pi.
+8. **Install and start garuda-mono** (DEMO_USER_GUIDE §3 "Start and install the mono
+   service": unit `hosts/pi5/units/garuda-mono.service` + the `GARUDA_MONO_DEPTH` drop-in;
+   the camera auto-selects, `GARUDA_MONO_CAM` overrides). Then open
+   `http://10.42.0.128:8098/demo` (booth console) and `http://10.42.0.128:8098/` (debug GUI).
+   The portal on `:8080` is optional for this demo.
 9. Optional: stand up the **GarudaBench WiFi AP** with
    `hosts/pi5/setup_wifi_ap.sh --psk <your own passphrase>` — clients reach the portal at
    `http://10.43.0.1:8080`.
