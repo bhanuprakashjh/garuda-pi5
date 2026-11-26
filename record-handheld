@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Run on the Pi in the unpacked kit. The temporary unit restores camera ownership on exit.
+set -euo pipefail
+root=$(cd -- "$(dirname -- "$0")" && pwd)
+kind=${1:-}
+case "$kind" in
+  walk|camera-grid|imu-grid|validation) ;;
+  *) echo "Usage: ./record-handheld walk|camera-grid|imu-grid|validation [seconds]"; exit 2 ;;
+esac
+seconds=${2:-90}
+if ! [[ "$seconds" =~ ^[1-9][0-9]{0,2}$ ]] || (( seconds < 5 || seconds > 300 )); then
+  echo 'Choose a duration between 5 and 300 seconds.' >&2; exit 2
+fi
+python=${OAK_PYTHON:-"$HOME/.venvs/oak-bringup-3.12.1/bin/python"}
+export PYTHONPATH="/usr/lib/python3/dist-packages${PYTHONPATH:+:$PYTHONPATH}"
+"$python" -c 'import cv2, depthai, numpy'
+data=${OAK_RECORDINGS:-"$HOME/oak-recordings"}
+mkdir -p -- "$data"
+session="$data/$kind-$(date +%Y%m%d-%H%M%S)"
+# Site-specific service names can be supplied as a space-separated list.
+read -r -a services <<< "${OAK_CAMERA_SERVICES:-garuda-oak-preview garuda-mono}"
+running=()
+for unit in "${services[@]}"; do
+  [[ "$unit" =~ ^[a-zA-Z0-9@_.-]+$ && "$unit" != -* ]] || { echo "Invalid unit: $unit" >&2; exit 2; }
+  if systemctl is-active --quiet "$unit"; then running+=("$unit"); fi
+done
+props=()
+if (( ${#running[@]} )); then
+  props+=(-p "ExecStartPre=+/bin/systemctl stop ${running[*]}" -p "ExecStopPost=+/bin/systemctl start ${running[*]}")
+fi
+echo "Recording $seconds seconds to $session. Camera services to resume: ${running[*]:-none}."
+sudo systemd-run --unit=garuda-vio-session --collect --wait --pipe --uid="$(id -u)" \
+  -p UMask=0077 --setenv="PYTHONPATH=$PYTHONPATH" "${props[@]}" \
+  "$python" -u "$root/bench/oak_vio_record.py" --seconds "$seconds" --out "$session"
+echo "Copy the entire recording folder to the workstation: $session"

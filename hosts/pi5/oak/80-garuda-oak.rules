@@ -1,0 +1,3 @@
+# OAK-D Pro booted and unbooted USB IDs observed on this bench.
+SUBSYSTEM=="usb", ATTR{idVendor}=="03e7", ATTR{idProduct}=="2485", GROUP="garuda", MODE="0660"
+SUBSYSTEM=="usb", ATTR{idVendor}=="03e7", ATTR{idProduct}=="f63b", GROUP="garuda", MODE="0660"

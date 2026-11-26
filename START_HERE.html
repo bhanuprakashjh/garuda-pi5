@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chennai · OAK camera handoff</title>
+<style>
+*{box-sizing:border-box}body{margin:auto;max-width:55rem;padding:2rem 1.5rem 5rem;color:#1b2728;background:#fbfaf6;font:17px/1.57 "Source Sans 3",system-ui,sans-serif}h1,h2,h3{line-height:1.17}h1{font-size:2.5rem;margin:.4rem 0}h2{margin-top:2.6rem;border-top:2px solid #345955;padding-top:1rem}h3{font-size:1.08rem}a{color:#155953}nav{display:flex;flex-wrap:wrap;gap:.5rem 1.3rem;margin:1.4rem 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;padding:1rem;background:#eaf0ea;border-left:3px solid #71968a}code{font: .9em/1.5 "IBM Plex Mono",monospace}li{margin:.42rem 0}td,th{vertical-align:top;text-align:left;padding:.55rem;border-bottom:1px solid #bec9c3}table{border-collapse:collapse;width:100%}strong{color:#143e39}@media print{body{background:white;padding:0;font-size:11pt}nav{display:none}pre,tr{break-inside:avoid}h2,h3{break-after:avoid}}
+</style>
+<main>
+<h1>Chennai OAK camera handoff</h1>
+<p>Start with a tabletop object and your working CM3 tracker. Once the same tracker displays observations from OAK, use the camera for a separate handheld mapping session. You can try the first replay using the camera's factory values.</p>
+<nav><a href="#tracking">Bench tracking</a><a href="#record">Record a walk</a><a href="#replay">See the path</a><a href="#calibrate">Calibrate the unit</a><a href="#return">Return results</a></nav>
+<h2>Unpack and set up once</h2>
+<p>Open the <a href="README.md">installation and first-session guide</a> for the two-machine setup, video receiver command, recording transfer and Basalt download. Open that file through GitHub to read it formatted online.</p>
+<p>Extract the ZIP into a new folder on the workstation. Copy that extracted folder to the Pi as <code>~/chennai-oak</code>. Keep your modified source checkout and the delivered kit in separate directories. The receiving engineer owns the integration with the local tracker. Bench checks here use the camera and detector displays with the flight controller disconnected.</p>
+<table><thead><tr><th>Machine</th><th>What it needs</th></tr></thead><tbody>
+<tr><td>Pi 5</td><td>OAK-D Pro over USB 3, cooling fan, normal-user camera access, and the team's existing Hailo detector environment. The camera owner and recorder use DepthAI 3.12.1, OpenCV and NumPy. Reserve free space for several thousand PNGs per take. If the Pi has only run CM3, have the engineer set up USB permissions and the OAK Python environment before first use.</td></tr>
+<tr><td>Linux workstation with a desktop</td><td>For the launcher install Python 3 and Zenity. For replay and fitting add Python OpenCV and NumPy. On Ubuntu/Debian the packages are <code>zenity python3-opencv python3-numpy</code>. Extract the upstream <a href="https://gitlab.com/VladyslavUsenko/basalt/-/releases/0.1.7">Basalt 0.1.7 Linux x86-64 release</a> in a separate folder. The launcher asks for the folder containing <code>bin/</code>, <code>lib/</code> and <code>data/</code>. Basalt is needed only for the mapping stages.</td></tr>
+</tbody></table>
+<p>From the extracted kit directory on the workstation, run the launcher. It opens ordinary desktop dialogs. This guide also opens directly from disk and can be printed.</p>
+<pre><code>python3 oak-workstation.py</code></pre>
+
+<details><summary>Engineer setup on a Pi that has only run CM3</summary>
+<p>Keep the camera SDK in its own environment. With the OS OpenCV and NumPy packages available, create the OAK environment and verify imports. The sample device rules reference the sending Pi’s <code>garuda</code> group. Have the administrator match this to the intended local group. The normal station user needs OAK USB access; the kit includes the <a href="hosts/pi5/oak/80-garuda-oak.rules">device rules</a> used on the sending Pi. Apply them through the local administrator if needed, then reconnect the OAK. Use a USB 3 data cable. The video relay uses the GStreamer H.265 parser and RTP payloader.</p>
+<pre><code>python3 -m venv --system-site-packages ~/.venvs/oak-bringup-3.12.1
+~/.venvs/oak-bringup-3.12.1/bin/python -m pip install --only-binary=:all: depthai==3.12.1
+~/.venvs/oak-bringup-3.12.1/bin/python -c 'import depthai, cv2, numpy; print(depthai.__version__)'
+gst-inspect-1.0 h265parse
+gst-inspect-1.0 rtph265pay</code></pre>
+<p>If the standard camera calibration page is missing, launch its supplied service in a terminal on the Pi with <code>python3 hosts/pi5/oak_calibration.py</code> using a Python environment with OpenCV and NumPy. Open <code>http://PI_HOST:8099/camera</code> from the bench LAN. This serves the depth-check workspace alongside the existing tracker. The camera owner uses port 8096.</p>
+</details>
+<h2 id="tracking">1. See the OAK in your existing tracker</h2>
+<ol>
+<li><strong>Save a reference.</strong> Point CM3 at a recognisable object such as a suitcase. Save the tracker's screenshot, current revision, camera selection and startup settings. Keep a way to select that CM3 profile again.</li>
+<li><strong>Bring up the OAK camera owner on the Pi.</strong> Use the camera environment and the owner command under “Camera display, object detection and stereo” in the <a href="docs/CHENNAI_OAK_MAPPING.md">engineering guide</a>. If the owner is already running, use that instance. The H.265 receiver IP is the laptop's address. The OAK owner serves the preview on port 8096.</li>
+<li><strong>Check the image source.</strong> Open <code>http://PI_HOST:8096/</code> in a browser, substituting the Pi hostname. Move the suitcase into frame. In the existing GARUDA demo, open <b>Open bench camera demo</b> from the launcher. Your custom GUI may use a different address or route.</li>
+<li><strong>Your integration point is the image input.</strong> The supplied <a href="hosts/pi5/oak_capture.py">OAK capture adapter</a> presents the single colour camera to the host detector. Keep the existing model and tracker for this comparison. The two monochrome cameras feed the Pi stereo computation. Their depth corresponds to the OAK colour view. Keep CM3 results under the CM3 profile.</li>
+<li><strong>Move the suitcase across the view with the camera stationary.</strong> Look for fresh detections, a box moving with the object, and the tracker's actual behaviour when the object leaves and re-enters. Cover the OAK colour lens briefly to confirm which camera the tracker is using. Repeat the CM3 check after switching back. Record any differences for your own merge.</li>
+<li><strong>Check distance and video separately.</strong> Use a rigid board and measured tape readings at near, middle and far positions. In the existing calibration GUI choose <b>Open guided camera calibration</b>. The H.265 receiver should show a moving picture with the target moving in the same direction. The H.265 picture comes from the camera encoder before any detector overlay.</li>
+</ol>
+<p><b>Keep:</b> a short bench clip or screenshots, camera profile and revision, measured depth readings and receiver result. <b>Check bench camera signals</b> in the launcher saves a read-only receipt from the standard camera and detector endpoints. A custom Chennai API may lack those fields; the receipt shows which ones need a manual check. A changing relay counter confirms transmission. Verify the picture at the receiver.</p>
+<p><a href="hosts/pi5/demo/chennai/OPERATOR.md">Detailed camera/depth field guide</a> · <a href="hosts/pi5/demo/chennai/oak-targets-a4.pdf">Print depth-check targets</a></p>
+
+<h2 id="record">2. Record a handheld walk on the Pi</h2>
+<p>Point the OAK at a textured, stationary room. Stand behind the lenses. Hold still for a few seconds, walk slowly past some furniture, return to the starting mark in the same orientation and pause again. This is a separate camera session. The helper temporarily pauses the active camera services and requests their restart when it exits.</p>
+<pre><code>cd ~/chennai-oak
+bash record-handheld walk 90</code></pre>
+<p>The default OAK interpreter is <code>~/.venvs/oak-bringup-3.12.1/bin/python</code>. Override it with <code>OAK_PYTHON</code> if yours differs. The default service names are <code>garuda-oak-preview garuda-mono</code>. If your camera owners use other systemd names, set <code>OAK_CAMERA_SERVICES</code> to those names first. The helper uses sudo for the temporary systemd job. Let it reach its requested duration, then verify the bench preview is back.</p>
+<p>Copy the <em>whole</em> new folder printed by the helper from <code>~/oak-recordings/</code> to the workstation using your usual file transfer. A valid take contains <code>left/</code>, <code>right/</code>, <code>frames.jsonl</code>, <code>imu.jsonl</code>, <code>calibration.json</code> and <code>session.json</code>. The last two describe the capture and its factory values. Keep all later fitted files in the result folders.</p>
+
+<h2 id="replay">3. See the first path</h2>
+<p>Choose <b>Try a handheld replay</b>. Select the Basalt release folder, the copied walk recording, and an output location. A plot opens when processing finishes. Use the PyPI or OS Python environment that contains OpenCV and NumPy to launch the workstation application. A ring marks the start and a dot marks the finish. Look for a plausible movement and return. Save <code>run/path.png</code>, <code>run/trajectory.txt</code> and <code>run/replay.json</code>. The output folder also contains the exact configuration and logs. A plausible shape justifies proceeding to measurement.</p>
+
+<h2 id="calibrate">4. Calibrate this physical camera</h2>
+<ol>
+<li>Write down the unit's serial/asset label, capture mode and board ID. Use the same camera and resolution for both fits and validation. Create a workstation results folder labelled with that serial. The Basalt calibration JSON does not identify the camera for you.</li>
+<li>Print the <a href="hosts/pi5/demo/chennai/oak-aprilgrid-a4.pdf">A4 VIO AprilGrid</a> at actual size, attach it to rigid flat backing and keep it still. Measure the black tag edge and adjacent white gap in millimetres, in both directions. Check the 100 mm scale bar. Reprint if horizontal and vertical scales differ. This sheet uses the Kalibr 6 × 6, 36h11 layout and a two-cell black border. The earlier checkerboards belong to the depth check. <a href="https://github.com/ethz-asl/kalibr/wiki/calibration-targets">Kalibr target reference</a></li>
+<li>On the Pi, run <code>bash record-handheld camera-grid 90</code>. Show the fixed board to both lenses, centred and toward the image edges, close and farther away, with several angles. Pause at each pose. For the second take run <code>bash record-handheld imu-grid 90</code>. Keep the board visible while moving and rotating the camera around all three axes. Avoid blur. Copy both complete folders to the workstation.</li>
+<li>Choose <b>Fit stereo cameras</b>. Pick the camera-grid take and enter the physical measurements. The launcher prepares raw paired images and opens Basalt. Follow the on-screen sequence, inspect detected corners and residuals, press <code>save_calib</code> and close the Basalt window. Keep the result folder.</li>
+<li>Choose <b>Fit camera and IMU</b>. Select the moving IMU-grid take and the previous stereo result folder. Choose measured IMU noise values if you have them, or explicitly select the exploratory defaults. Fit the relative pose and time offset in the Basalt window, inspect, save and close. The result folder contains a new <code>calibration.json</code>, the board measurements, the noise choice and the take references. The stereo result stays available.</li>
+</ol>
+
+<h2>5. Test the calibration on a different walk</h2>
+<p>Mark A, midpoint M and endpoint B on a straight line. Measure A–M and M–B. Record two independent walks in order A → M → B → M → A, holding the same orientation at the marks and resting for several seconds at each. Use <code>bash record-handheld validation 90</code> for each take. Record the rest times as a cross-check.</p>
+<p>Choose <b>Replay a measured calibration and build a map</b>, select a held-out walk and the camera–IMU result for that unit. Then choose <b>Score a measured walk</b>, select the output folder containing <code>run/</code> and <code>dataset/</code>, and enter the two tape measurements. Check the identified rests against your notes. Report failed takes too. The map replay writes keyframe data and the mapper log. The path plot shows the odometry estimate.</p>
+
+<h2 id="return">What to return</h2>
+<table><tr><th>Stage</th><th>Evidence</th></tr>
+<tr><td>OAK bench tracking</td><td>Camera/host IDs, modified tracker revision, camera receipt or screenshots, object tracking observations, depth vs tape, receiver picture and the result of returning to CM3.</td></tr>
+<tr><td>Handheld calibration</td><td>Printed board measurements, camera serial, both fit folders, IMU noise source and relevant logs.</td></tr>
+<tr><td>Handheld validation</td><td>Separate recording IDs, actual tape lengths and pause times, plots, replay reports and tape scores. Share raw room images only when intended.</td></tr></table>
+<h3>If a step stalls</h3>
+<ul><li><b>OAK preview works but the tracker still shows CM3.</b> Check the selected capture backend and image source in Chennai's modified application.</li>
+<li><b>Camera busy.</b> Check the camera owner/service names. The recorder and live preview each need exclusive access to the OAK.</li>
+<li><b>Missing Basalt executable or library.</b> Select the unpacked Linux release root, then inspect the result folder's <code>operator.log</code> for the missing library.</li>
+<li><b>No corners or the solver fails.</b> Check the correct board, print scale, lighting, coverage in both images and blur. Use a fresh capture and result directory.</li>
+<li><b>Tape scorer cannot match rests.</b> Check the route and gyro rest intervals. Smooth straight translation can also look quiet to a gyro. Repeat with clearly marked stops if the correspondence is uncertain.</li></ul>
+<p>The AprilGrid layout follows the ETH Zürich Kalibr target generator and the AprilTags 36h11 code family. For individual commands, inputs and output formats see the <a href="docs/CHENNAI_OAK_MAPPING.md">mapping engineering guide</a>.</p>
+</main></html>
