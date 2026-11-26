@@ -167,6 +167,8 @@ def plot_walk(trajectory, output):
     import cv2
     import numpy as np
     positions = np.loadtxt(trajectory, ndmin=2)[:, 1:3]
+    if positions.shape[1] != 2 or not len(positions) or not np.isfinite(positions).all():
+        raise ValueError("The trajectory needs finite horizontal positions from a completed run.")
     positions -= positions[0].copy()
     low, high = positions.min(axis=0), positions.max(axis=0)
     span = max(.2, float(np.max(high - low)))
@@ -299,7 +301,7 @@ def main():
     if not shutil.which("zenity"):
         sys.exit("Install zenity on the Linux desktop, then run this launcher again.")
     menu = ["Open bench camera demo", "Check bench camera signals", "Open depth-check targets",
-            "Open depth-check workspace", "Try a handheld replay", "Open printable VIO AprilGrid", "Fit stereo cameras", "Fit camera and IMU",
+            "Open depth-check workspace", "View a Pi VIO path", "Try a handheld replay", "Open printable VIO AprilGrid", "Fit stereo cameras", "Fit camera and IMU",
             "Replay a measured calibration and build a map", "Score a measured walk", "Open receiving guide"]
     release = None
     while True:
@@ -321,6 +323,15 @@ def main():
                 with tempfile.NamedTemporaryFile("w", prefix="oak-receipt-", suffix=".json", dir=parent, delete=False) as f:
                     json.dump(report, f, indent=2)
                 info("Bench signals", summary + "\n\nReceipt: " + f.name)
+            elif action == "View a Pi VIO path":
+                run_dir = folder("Choose the copied Pi run containing trajectory.txt and summary.json")
+                summary = json.loads((run_dir / "summary.json").read_text())
+                states = summary["counts"]["states"]
+                if states < 1:
+                    raise ValueError("The Pi run recorded no poses. Inspect summary.json on the Pi.")
+                plot_walk(run_dir / "trajectory.txt", run_dir / "path.png")
+                open_item(run_dir / "path.png")
+                info("Pi VIO path", f"{states} poses. Stop reason: {summary['stopped_by']}.")
             elif action == "Score a measured walk":
                 score_walk()
             elif action == "Open receiving guide":

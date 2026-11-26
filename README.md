@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | Pi 5 on the bench | OAK preview and your existing detector | Moving OAK RGB image, fresh detections on a test object and an aligned stereo depth view |
 | Linux laptop | Browser and H.265 receiver | Bench displays on the Pi and a separate decoded video window |
+| Pi 5, live odometry | [Build and run handheld VIO on the Pi](docs/CHENNAI_PI_VIO.md) | Poses computed during movement and saved on the Pi |
 | Pi 5, handheld OAK | `bash record-handheld walk 90` | A fresh folder containing stereo pairs, IMU readings and capture settings |
 | x86-64 Linux desktop | `python3 oak-workstation.py` | A plotted handheld path, then separate calibration and validation results |
 
