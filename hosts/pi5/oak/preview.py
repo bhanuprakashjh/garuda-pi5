@@ -37,7 +37,8 @@ document.getElementById('demo').href=location.protocol+'//'+location.hostname+':
 document.getElementById('full').onclick=()=>document.getElementById('view').requestFullscreen();
 let failed=false;
 async function status(){try{const r=await fetch('/health',{cache:'no-store'});const s=await r.json();
-const ok=s.age_s!==null&&s.age_s<2&&!s.error&&s.healthy!==false;
+// age_s measures time since the last published preview JPEG. Depth may be idle.
+const ok=Number.isFinite(s.age_s)&&s.age_s>=0&&s.age_s<2&&!s.error;
 document.getElementById('status').textContent=ok?'LIVE | '+s.usb+' | '+s.fps.toFixed(1)+' fps':(s.error||'Waiting for camera');
 document.getElementById('feed').style.visibility=ok?'visible':'hidden';
 if(ok&&failed)document.getElementById('feed').src='/stream?t='+Date.now();failed=!ok;

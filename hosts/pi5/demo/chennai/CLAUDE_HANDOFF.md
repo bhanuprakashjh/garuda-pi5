@@ -13,7 +13,7 @@ Use this add-on alongside the team's existing CM3/Pi/Hailo installation. Keep th
 | Video downlink | The OAK hardware encoder produces H.265/HEVC. The Pi relays RTP. The browser MJPEG preview is a separate output. |
 | Handheld mapping | The recorder uses the raw CAM_B/C pair and IMU. An offline Basalt run produces a camera-rig trajectory and keyframe data for mapping. |
 
-The camera owner in `hosts/pi5/oak/preview.py` supports the host-stereo and H.265 options together. Reuse the installed detector and select its OAK RGB source. The station guide describes the existing profiles and how to check range with printed targets. In the November 14 bench run, the detector produced 15.2 fps and the OAK video relay reported 1,592 of 1,592 encoded frames sent. That specific receiver check counted RTP packets. Chennai's CM3 flight-control changes are maintained in its separate installation.
+The camera owner in `hosts/pi5/oak/preview.py` supports the host-stereo and H.265 options together. Reuse the installed detector and select its OAK RGB source. The station guide describes the existing profiles and how to check range with printed targets. The video frame counter counts writes into the Pi’s local RTP payloader. The November 14 receiver check counted incoming packets. The workstation receiver command also decoded synthetic video in a local loopback test. At Chennai, confirm the end-to-end OAK picture by moving the object and watching the laptop display. Chennai's CM3 flight-control changes are maintained in its separate installation.
 
 See [the Chennai camera station guide](../../../../hosts/pi5/demo/chennai/OPERATOR.md).
 
@@ -32,14 +32,14 @@ Use the Pi's DepthAI 3.12.1 environment with OpenCV and NumPy; check that the OA
 
 1. **Camera calibration.** Record a stationary AprilGrid at varied positions, angles and distances across *both* images. Pause at each view. Enter the measured tag edge length in metres and gap-to-edge ratio in a Basalt AprilGrid JSON matching the physical board. The checkerboards in the station guide are for the separate depth check.
 2. **Camera–IMU calibration.** Record a separate take with the same grid fixed and visible, moving the camera through rotations about all three axes and translations. Keep the stereo mode and resolution identical. Retain the IMU noise inputs and their source with the solution.
-3. **Independent evaluation.** Record a marked handheld route with a start, midpoint and endpoint. Pause at the marks and return to the start in the same orientation. Record the tape distances and pause times. Keep a second take separate from any tuning. A stationary smoke capture is useful for checking installation.
+3. **Independent evaluation.** Record a marked handheld route with a start, midpoint and endpoint. Set the camera down for several seconds at each mark in the same orientation and log the times. Record the tape distances and pause times. Keep a second take separate from any tuning. A stationary smoke capture is useful for checking installation.
 
 Run the recorder for each take with a fresh output name. The recorder defaults to 640 × 400 and 30 fps.
 
 ```sh
-python3 bench/oak_vio_record.py --seconds 120 --out recordings/camera-grid
-python3 bench/oak_vio_record.py --seconds 120 --out recordings/imu-grid
-python3 bench/oak_vio_record.py --seconds 120 --out recordings/walk-held-out
+"$HOME/.venvs/oak-bringup-3.12.1/bin/python" bench/oak_vio_record.py --seconds 120 --out recordings/camera-grid
+"$HOME/.venvs/oak-bringup-3.12.1/bin/python" bench/oak_vio_record.py --seconds 120 --out recordings/imu-grid
+"$HOME/.venvs/oak-bringup-3.12.1/bin/python" bench/oak_vio_record.py --seconds 120 --out recordings/walk-held-out
 ```
 
 ## Fit the calibration at Chennai

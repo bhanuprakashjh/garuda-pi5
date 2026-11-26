@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Score an odometry trajectory against TAPE-MEASURED stops. No scale is fitted, nothing is aligned.
 
-Protocol this scores (docs/VIO_CHENNAI.md): marks on the floor or a table, a tape-measured
+Protocol this scores (docs/CHENNAI_OAK_MAPPING.md): marks on the floor or a table, a tape-measured
 distance between them, the camera set down on each mark and left still for a few seconds, always
 facing the same way. The camera's rests are found from the GYRO (independent of the estimator);
 the estimated position at each rest is the median over that rest.

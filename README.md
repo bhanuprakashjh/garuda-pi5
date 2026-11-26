@@ -50,15 +50,24 @@ python3 -m venv --system-site-packages ~/.venvs/oak-bringup-3.12.1
 ~/.venvs/oak-bringup-3.12.1/bin/python -c 'import cv2, depthai, numpy; print(depthai.__version__)'
 ```
 
-If the camera is visible only to root, have the station administrator install the [USB rules](hosts/pi5/oak/80-garuda-oak.rules) in `/etc/udev/rules.d/` with the local camera-access group, grant the station user membership, reload the rules, reconnect the OAK and start a new login session. Both boot states of the device need access.
+If the camera is visible only to root, have the station administrator install the [USB rules](hosts/pi5/oak/80-garuda-oak.rules) in `/etc/udev/rules.d/` with the local camera-access group, grant the station user membership, reload the rules, reconnect the OAK and start a new login session. Both boot states of the device need access. On a Pi using the supplied group name, the station administrator can run the following from the extracted kit as the camera operator with sudo access.
+
+```sh
+sudo groupadd -f garuda
+sudo install -m 0644 hosts/pi5/oak/80-garuda-oak.rules /etc/udev/rules.d/80-garuda-oak.rules
+sudo usermod -aG garuda "$(id -un)"
+sudo udevadm control --reload-rules
+```
+
+Reconnect the OAK and log out and back in. Run `id -nG` to confirm the new membership. The camera and calibration pages serve imagery to clients on the bench LAN. Use the intended bench network.
 
 ## 3. Verify the OAK input, stereo distance and video
 
 1. With the flight controller disconnected, save a screenshot of a suitcase or other recognizable object in the working CM3 tracker. Write down the profile, service names and tracker revision. Keep these for the return-to-CM3 check.
 2. Start the H.265 receiver **on the laptop**. Use a wired or Wi-Fi interface reachable from the Pi. The command listens on UDP 5600 until you press Ctrl+C.
-3. Start the camera owner **on the Pi** in a separate terminal using the laptop's reachable IP address. If the installed OAK owner already uses these options, use that instance. A single process owns the OAK USB device.
+3. Start the camera owner **on the Pi** in a separate terminal using the laptop's reachable IP address. Use the preview from this release. If an older service owns port 8096 or the USB camera, stop that service for the foreground check and restore it afterward. If the service already runs this release with these options, use that instance. A single process owns the OAK USB device.
 4. In the laptop browser visit `http://PI_HOST:8096/`, replacing `PI_HOST` with the actual Pi address. Move the object and confirm the preview and separate H.265 picture both change. The encoded video shows the camera image before detector overlays.
-5. In the team's existing bench tracker, select its OAK RGB input. On the stock GARUDA detector the source selector is `GARUDA_MONO_CAM=oak`. If the local fork predates that selector, its camera engineer can compare the [RGB capture adapter](hosts/pi5/oak_capture.py) and the installed camera input. The adapter supplies 1280 × 720 BGR frames at 15 fps. Compare outputs before changing the model or tracker. Move the object across the frame, briefly cover the OAK colour lens, then restore the view. Confirm the active source and a fresh moving detection. The stock demo lives at `http://PI_HOST:8098/demo`.
+5. In the team's existing bench tracker, select its OAK RGB input. On the stock GARUDA detector the source selector is `GARUDA_MONO_CAM=oak`. If the local fork predates that selector, its camera engineer can compare the [RGB capture adapter](hosts/pi5/oak_capture.py) and the installed camera input. The adapter runs on the same Pi as the camera owner and reads its local port 8096. In host-stereo mode it supplies undistorted 1280 × 720 BGR frames at 15 fps. The stock detector reports the source as `oak-rgb` and keeps the camera epoch separately. Compare outputs before changing the model or tracker. Move the object across the frame, briefly cover the OAK colour lens, then restore the view. Confirm the active source and a fresh moving detection. The stock demo lives at `http://PI_HOST:8098/demo`.
 6. Open `http://PI_HOST:8099/camera` and use the [operator field guide](hosts/pi5/demo/chennai/OPERATOR.md) for board depth versus tape. If that service is absent, run `python3 hosts/pi5/oak_calibration.py` in another Pi terminal from the kit directory. Save the depth export and bench receipt. Restore the CM3 profile and repeat the reference check.
 
 **Laptop receiver**
@@ -79,11 +88,11 @@ read -rp 'Laptop receiver IP address: ' RECEIVER_IP
   --video-codec h265 --video-host "$RECEIVER_IP" --video-port 5600
 ```
 
-If RGB works but the receiver stays blank, check the Pi's destination IP, laptop UDP 5600 access, decoder plugins and the video counter in the launcher's **Check bench camera signals**. If detector counters are unavailable from a custom API, save a screenshot and the tracker revision with your observation.
+If RGB works but the receiver stays blank, check the Pi's destination IP, laptop UDP 5600 access, decoder plugins and the video counter in the launcher's **Check bench camera signals**. The counter measures frames written to the local RTP payloader. Confirm delivery by watching the moving image on the receiving laptop. If detector counters are unavailable from a custom API, save a screenshot and the tracker revision with your observation.
 
 ## 4. Record a walk and see the path
 
-**On the Pi**, close any foreground OAK preview you started above. If systemd manages the preview and detector, the recorder pauses the named active services and requests their restart afterward. For custom service names set `OAK_CAMERA_SERVICES` to a space-separated list of your station's camera services. Record one slow out-and-back handheld walk in a textured room, pausing at both ends.
+**On the Pi**, close any foreground OAK preview you started above. If systemd manages the preview and detector, the recorder uses sudo for a transient systemd job, pauses the named active services and requests their restart afterward. For custom service names set `OAK_CAMERA_SERVICES` to a space-separated list of your station's camera services. Record one slow out-and-back handheld walk in a textured room, pausing at both ends.
 
 ```sh
 cd ~/chennai-oak
@@ -94,6 +103,7 @@ bash record-handheld walk 90
 
 ```sh
 mkdir -p ~/oak-recordings
+read -rp 'Pi SSH destination (user@hostname): ' PI_SSH
 read -rp 'Full recording path printed on the Pi: ' TAKE_PATH
 scp -r "${PI_SSH}:${TAKE_PATH}" ~/oak-recordings/
 ```
@@ -115,7 +125,7 @@ Use the [offline operator instructions](START_HERE.html) for the full sequence a
 1. Print the [VIO AprilGrid](hosts/pi5/demo/chennai/oak-aprilgrid-a4.pdf) on A4 at actual size. Mount it flat and measure the tag edge, gap and scale bar. Keep the separate [depth-check targets](hosts/pi5/demo/chennai/oak-targets-a4.pdf) for the earlier range check.
 2. On the Pi record `bash record-handheld camera-grid 90` with the grid filling different parts of both images. Then record `bash record-handheld imu-grid 90` with the fixed board visible as you rotate the camera about all three axes. Copy both takes as above.
 3. On the laptop choose **Fit stereo cameras**, enter the measured board dimensions in millimetres, inspect detections and residuals, save in Basalt and close its window. Choose **Fit camera and IMU** with the separate moving take and the saved stereo result. Record the IMU noise source and inspect the pose and time-offset fit. Keep both result folders under the unit's serial.
-4. Mark and measure a straight A–M–B route. Record two fresh walks A → M → B → M → A with pauses at each mark. For each, choose **Replay a measured calibration and build a map**, then **Score a measured walk**. Compare the reported stops with your notes and the distances against the tape.
+4. Mark and measure a straight A–M–B route. For each of two fresh takes run `bash record-handheld validation 90` on the Pi. Follow A → M → B → M → A. Set the OAK down for several seconds at each of the five stops, facing the same direction. Write down the stop times. For each, choose **Replay a measured calibration and build a map**, then **Score a measured walk**. Compare the reported stops with your notes and the distances against the tape.
 5. Return the tracker revision, camera ID, CM3/OAK observations, receiver result, measured depth export, board measurements, fit folders, trajectory plots and validation scores. Include failed takes and their logs. Keep room imagery in your team's chosen evidence store.
 
 A replay that draws a path confirms the software ran. Use independent tape measurements and repeat walks to judge accuracy on this camera. For troubleshooting, inspect the stage's `operator.log` and the relevant section of `START_HERE.html`.
